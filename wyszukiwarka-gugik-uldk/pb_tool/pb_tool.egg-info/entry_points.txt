@@ -1,0 +1,4 @@
+
+        [console_scripts]
+        pb_tool=pb_tool:cli
+    

@@ -1,0 +1,9 @@
+wyszukiwarka-gugik-uldk.zip
+*.pyc
+*.py~
+.vscode/**
+test/**
+
+
+.hg/**
+.hgignore

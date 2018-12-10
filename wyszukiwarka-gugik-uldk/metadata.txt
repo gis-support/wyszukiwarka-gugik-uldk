@@ -1,0 +1,40 @@
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta
+qgisMinimumVersion=3.0
+description=Wtyczka służąca do pobierania granic działek ewidencyjnych.
+version=1.3
+author=Studenci UMCS uczestniczący w programie: Geo4Work2018
+email=kamil.kozik@gis-support.pl 
+
+about=Wtyczka służąca do pobierania granic działek ewidencyjnych za pomocą usługi ULDK Głównego Urzędu Geodezji i Kartografii. ULDK łączy się do powiatowych baz danych w celu pobrania danych wektorowych i przesłania ich do użytkownika. Wtyczka umożliwia również przeglądanie działek ewidencyjnych za pomocą warstwy WMS, udostępnionej w ramach Krajowej Integracji Ewidencji Gruntów.
+
+tracker=https://gis-support.pl/wyszukiwarka-dzialek-ewidencyjnych-uldk-gugik/
+repository=https://bitbucket.org/gissupport/wyszukiwarka-gugik-uldk/src
+# End of mandatory metadata
+
+# Recommended items:
+
+# Uncomment the following line and add your changelog:
+changelog=- Adres żądań zmieniony na http://uldk.gugik.gov.pl/service.php?
+
+
+# Tags are comma separated with spaces allowed
+tags=python
+
+homepage=https://gis-support.pl/wyszukiwarka-dzialek-ewidencyjnych-uldk-gugik/
+category=Plugins
+icon=logo_thumb.png
+# experimental flag
+experimental=False
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
