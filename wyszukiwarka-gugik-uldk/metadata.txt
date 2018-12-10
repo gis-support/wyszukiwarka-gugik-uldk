@@ -17,7 +17,7 @@ email=kamil.kozik@gis-support.pl
 about=Wtyczka służąca do pobierania granic działek ewidencyjnych za pomocą usługi ULDK Głównego Urzędu Geodezji i Kartografii. ULDK łączy się do powiatowych baz danych w celu pobrania danych wektorowych i przesłania ich do użytkownika. Wtyczka umożliwia również przeglądanie działek ewidencyjnych za pomocą warstwy WMS, udostępnionej w ramach Krajowej Integracji Ewidencji Gruntów.
 
 tracker=https://gis-support.pl/wyszukiwarka-dzialek-ewidencyjnych-uldk-gugik/
-repository=https://bitbucket.org/gissupport/wyszukiwarka-gugik-uldk/src
+repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 # End of mandatory metadata
 
 # Recommended items:
