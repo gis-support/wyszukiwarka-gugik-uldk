@@ -378,7 +378,8 @@ class wyszukiwarkaDzialek:
         return d
 
     def pobierzWKT (self, identyfikator):
-        zadanie = "http://dzialkikatastralne.pl/uldk.php?request=dzialka&identyfikator={}&wynik=geom_wkt".format(identyfikator)
+        #zadanie = "http://dzialkikatastralne.pl/uldk.php?request=dzialka&identyfikator={}&wynik=geom_wkt".format(identyfikator)
+        zadanie = "http://uldk.gugik.gov.pl/service.php?obiekt=dzialka&teryt={}&wynik=geom_wkt".format(identyfikator)
         reqG = requests.get(zadanie)
         geomS = str(reqG.content).split('\\n')
         status_code = str(reqG.text[0])
@@ -388,7 +389,8 @@ class wyszukiwarkaDzialek:
         return str(geomWkt), identyfikator
 
     def pobierzSlownikObrebow(self, nazwaGminy):
-        zadanie = "http://dzialkikatastralne.pl/uldk.php?request=listaobrebow&jednostkaewidencyjna={}".format(nazwaGminy)
+        #zadanie = "http://dzialkikatastralne.pl/uldk.php?request=listaobrebow&jednostkaewidencyjna={}".format(nazwaGminy)
+        zadanie = "http://uldk.gugik.gov.pl/service.php?obiekt=obreb&teryt={}&wynik=teryt,nazwa".format(nazwaGminy)
         req = requests.get(zadanie)
         req.encoding = "utf-8"
         status_code = str(req.text[0])
