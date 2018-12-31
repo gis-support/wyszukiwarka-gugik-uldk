@@ -10,7 +10,7 @@
 name=Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta
 qgisMinimumVersion=3.0
 description=Wtyczka służąca do pobierania granic działek ewidencyjnych.
-version=1.4
+version=1.4.1
 author=Studenci UMCS uczestniczący w programie: Geo4Work2018
 email=kamil.kozik@gis-support.pl 
 
@@ -23,7 +23,7 @@ repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog=
+changelog=Gdy dla gminy nie zostaną znalezione obręby, w comboboxie nie wyświetlają się już obręby z poprzedniego szukania
 
 
 # Tags are comma separated with spaces allowed
