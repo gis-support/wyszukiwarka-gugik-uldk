@@ -353,6 +353,7 @@ class wyszukiwarkaDzialek:
             self.dict_obr = self.pobierzSlownikObrebow(gmi_id)
         except self.PrecinctRequestError as e:
             self.iface.messageBar().pushCritical("Błąd!", str(e))
+            return
         for k,v in self.dict_obr.items():
             lista.append((k +" [{}]".format(v)))
         self.dockwidget.comBoxObr.addItems(lista)
