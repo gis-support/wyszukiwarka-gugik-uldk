@@ -37,35 +37,25 @@ import os.path
 import json
 import operator
 import locale
-from collections import OrderedDict
+
 import requests
 import time
 from urllib.request import urlopen
+from collections import OrderedDict
 
-
-
-
+try: 
+    from .uldk_api import ULDK_API as uldk_api
+except ImportError:
+    from uldk_api import ULDK_API as uldk_api
+try:
+    from .exceptions import *
+except ImportError:
+    from exceptions import *
 class wyszukiwarkaDzialek:
-
-    class PlotRequestError(Exception):
-        pass
-    class PrecinctRequestError(Exception):
-        pass
-    class InvalidGeomError(Exception):
-        pass
     
     folder = os.path.dirname(os.path.abspath(__file__))
-    path_woj = os.path.join(folder, 'woj.json')
-    path_pow = os.path.join(folder, 'pow.json')
-    path_gmi = os.path.join(folder, 'gmi.json')
     
     path_logo = ':/plugins/plugin/logo_thumb.png'
-
-    dict_woj = {}
-    dict_pow = {}
-    dict_gmi = {}
-    dict_obr = {}
-
 
     def __init__(self, iface):
         """Constructor.
@@ -285,26 +275,19 @@ class wyszukiwarkaDzialek:
             self.dockwidget.comBoxGmi.activated.connect(self.argumentsFilled)
             self.dockwidget.labelCurrentID.textChanged.connect(self.argumentsFilled)
 
-            self.dockwidget.btnSearch.clicked.connect(self.wyswietlDzialke)
+            self.dockwidget.btnSearch.clicked.connect(self.add_dzialka_layer)
             self.dockwidget.btnWMS.clicked.connect(self.addWMS)
 
-            self.dict_woj = self.jsonToDict(self.path_woj)
-            self.dict_pow = self.jsonToDict(self.path_pow)
-            self.dict_gmi = self.jsonToDict(self.path_gmi)
             self.fillComBoxWoj()
 
+
     def SetCurrentID(self):
-        obr_id = obr_id = self.dockwidget.comBoxObr.currentText()[-14:-1]
+        obr_id = obr_id = self.dockwidget.comBoxObr.currentText().split(" | ")[1]
         dzi_id = self.dockwidget.texEdDzi.text()
         identyfikator = "{}.{}".format(obr_id,dzi_id)
         self.dockwidget.labelCurrentID.setText(identyfikator)
 
-    def fillComBoxWoj(self):
-        start = time.time()
-        lista = [""]
-        for k,v in self.dict_woj.items():
-            lista.append(v +" [{}]".format(k))
-        self.dockwidget.comBoxWoj.addItems(lista)
+
     
     def argumentsFilled(self):
         enabled = (self.dockwidget.comBoxWoj.currentText() != "" and
@@ -314,132 +297,72 @@ class wyszukiwarkaDzialek:
                 self.dockwidget.texEdDzi.text() != "") or self.dockwidget.labelCurrentID.text() != ""
         self.dockwidget.btnSearch.setEnabled(enabled)
 
+    def fillComBox(self, target, content_list, in_separator = "|", out_separator = " | ", clear = True, first_element_empty = True):
+        if clear:
+            target.clear()
+        content_format = []
+        if first_element_empty:
+            content_format.append("")
+        for e in content_list:
+            spl = e.split( in_separator )
+            try:
+                content_format.append("{}{sep}{}".format( spl[0], spl[1], sep = out_separator ))
+            except:
+                continue
+        target.addItems(content_format)
+
+    def fillComBoxWoj(self):
+        wojewodztwa =  self.get_wojewodztwa()
+        self.fillComBox(self.dockwidget.comBoxWoj, wojewodztwa)
+
     def fillComBoxPow(self):
-        start = time.time()
-        lista = [""]
-        for i in range(self.dockwidget.comBoxPow.count()):
-            self.dockwidget.comBoxPow.removeItem(0)
-        for i in range(self.dockwidget.comBoxGmi.count()):
-            self.dockwidget.comBoxGmi.removeItem(0)
-        for i in range(self.dockwidget.comBoxObr.count()):
-            self.dockwidget.comBoxObr.removeItem(0)
-        woj_id = self.dockwidget.comBoxWoj.currentText()[-3:-1]
-        for k,v in self.dict_pow.items():
-            if k[0:2] == woj_id:
-                lista.append(v +" [{}]".format(k))
-        self.dockwidget.comBoxPow.addItems(lista)
-       
+        self.dockwidget.comBoxGmi.clear()
+        self.dockwidget.comBoxObr.clear()
+
+        woj = self.dockwidget.comBoxWoj.currentText()
+        if woj == "":
+            return
+        woj_teryt = woj.split(" | ")[1]
+
+        powiaty = self.get_powiaty(woj_teryt)
+        self.fillComBox(self.dockwidget.comBoxPow, powiaty)
 
     def fillComBoxGmi(self):
-        start = time.time()
-        lista = [""]
-        for i in range(self.dockwidget.comBoxGmi.count()):
-            self.dockwidget.comBoxGmi.removeItem(0)
-        for i in range(self.dockwidget.comBoxObr.count()):
-            self.dockwidget.comBoxObr.removeItem(0)
-        pow_id = self.dockwidget.comBoxPow.currentText()[-5:-1]
-        for k,v in self.dict_gmi.items():
-            if k[0:4] == pow_id:
-                lista.append(v +" [{}]".format(k))
-        self.dockwidget.comBoxGmi.addItems(lista)
-        
+        self.dockwidget.comBoxObr.clear()
+
+        pow = self.dockwidget.comBoxPow.currentText()
+        if pow == "":
+            return
+        pow_teryt = pow.split(" | ")[1]
+        gminy = self.get_gminy(pow_teryt)
+        self.fillComBox(self.dockwidget.comBoxGmi, gminy)
 
     def fillComBoxObr(self):
-        lista = [""]
-        for i in range(self.dockwidget.comBoxObr.count()):
-            self.dockwidget.comBoxObr.removeItem(0)
-        gmi_id = self.dockwidget.comBoxGmi.currentText()[-8:-2]
-        try:
-            self.dict_obr = self.pobierzSlownikObrebow(gmi_id)
-        except self.PrecinctRequestError as e:
-            self.iface.messageBar().pushCritical("Błąd!", str(e))
+        self.dockwidget.comBoxObr.clear() 
+        gmi = self.dockwidget.comBoxGmi.currentText()
+        if gmi == "":
             return
-        for k,v in self.dict_obr.items():
-            lista.append((k +" [{}]".format(v)))
-        self.dockwidget.comBoxObr.addItems(lista)
+        gmi_teryt = gmi.split(" | ")[1]
+        obreby = self.get_obreby(gmi_teryt)
+        self.fillComBox(self.dockwidget.comBoxObr, obreby)
         
+    def add_dzialka_layer(self):
 
-    def wyswietlDzialke(self):
-        obr_id = self.dockwidget.comBoxObr.currentText()[-14:-1]
-        dzi_id = self.dockwidget.texEdDzi.text()
-        identyfikator = self.dockwidget.labelCurrentID.text()
+        dzialka_id = self.dockwidget.labelCurrentID.text()
+        dzialka_numer = dzialka_id.split(".")[2]
+        if dzialka_numer == "":
+            self.iface.messageBar().pushWarning("","Podaj numer działki")
+            return
         try:
-            wkt = self.pobierzWKT(identyfikator)
-            self.dodajGeom(*wkt, identyfikator)
-        except (self.PlotRequestError, self.PrecinctRequestError, self.InvalidGeomError)  as e:
-            self.iface.messageBar().pushCritical("Błąd!", str(e))
-
-    def jsonToDict(self, path):
-        d = {}
-        with open(path) as f:
-            d = json.loads(f.read())
-        #locale.setlocale(locale.LC_ALL, 'pl_PL')
-        d = OrderedDict(sorted(d.items(), key=operator.itemgetter(0)))
-        
-        return d
-
-    def pobierzWKT (self, identyfikator):
-        #zadanie = "http://dzialkikatastralne.pl/uldk.php?request=dzialka&identyfikator={}&wynik=geom_wkt".format(identyfikator)
-        zadanie = "http://uldk.gugik.gov.pl/service.php?obiekt=dzialka&teryt={}&wynik=geom_wkt".format(identyfikator)
-        reqG = requests.get(zadanie)
-        geomS = str(reqG.content).split('\\n')
-        status_code = str(reqG.text[0])
-        if status_code != str(0):
-            raise(self.PlotRequestError("Nie odnaleziono działki!"))
-        geomWkt = geomS[1]
-        return str(geomWkt), identyfikator
-
-    def pobierzSlownikObrebow(self, nazwaGminy):
-        #zadanie = "http://dzialkikatastralne.pl/uldk.php?request=listaobrebow&jednostkaewidencyjna={}".format(nazwaGminy)
-        zadanie = "http://uldk.gugik.gov.pl/service.php?obiekt=obreb&teryt={}&wynik=teryt,nazwa".format(nazwaGminy)
-        req = requests.get(zadanie)
-        req.encoding = "utf-8"
-        status_code = str(req.text[0])
-        if status_code != str(0):
-            raise(self.PrecinctRequestError("Nie odnaleziono obrębów w gminie!"))
-        listaM =[]
-        listaO = []
-        reqsplit = req.text.splitlines()
-
-        licznik = 0
-        for elem in reqsplit:
-            if licznik > 0:
-                el = elem.split('|')
-                listaM.append(el[1])
-                listaO.append(el[0])
-            licznik += 1
-        slownik = {}
-        for count, elem in enumerate(listaM):
-            slownik[listaM[count]] = listaO[count]
-        return slownik
-
-
-
-    def dodajGeom(self, geomEWkt, nazwaWarstwy="warstwa_wynikowa", identyfikator = "0"):
-        EWkt = geomEWkt.split(";")
-        Wkt, epsg = "",""
-        if len(EWkt) == 1:
-            Wkt = geomEWkt
-            epsg = "2180"
-            print("zwrócono WKT zamiast EWKT")
-        else:
-            Wkt = EWkt[1]
-            epsg_temp = str(EWkt[0])
-            epsg = str(epsg_temp[-4:])
-        geom = QgsGeometry.fromWkt(Wkt)
-        if geom.isGeosValid() == False:
-            raise(self.InvalidGeomError("Nie udało się utworzyć geometrii!"))
-        layer = QgsVectorLayer("Polygon?crs=EPSG:"+epsg, nazwaWarstwy, "memory")
-        layer.startEditing()
-        layer.dataProvider().addAttributes([QgsField("id", QVariant.String)])
-        layer.dataProvider().addAttributes([QgsField("pow_mkw", QVariant.String)])
-        feat = QgsFeature()
-        feat.setGeometry(geom)
-        area = geom.area()
-        feat.setAttributes([identyfikator, area])
-        layer.dataProvider().addFeature(feat)
-        layer.commitChanges()
+            ewkt = self.get_dzialka(dzialka_id)
+        except RequestException as e:
+            return
+        try:
+            layer = self.WKT_to_QgsVectorlayer(ewkt, layer_name = "dzialka_" + dzialka_id)
+        except InvalidGeomException as e:
+            self.iface.messageBar().pushCritical("",str(e))
         QgsProject.instance().addMapLayer(layer)
+
         #styl
         myRenderer  = layer.renderer()
         mySymbol1 = QgsFillSymbol.createSimple({'color':'white', 'color_border':'red','width_border':'2'})
@@ -447,6 +370,81 @@ class wyszukiwarkaDzialek:
         layer.setOpacity(0.35)
         layer.triggerRepaint()
         self.iface.zoomToActiveLayer()
+
+    def get_wojewodztwa(self):
+        """Pobranie wszystkich województw w kraju"""
+        url = uldk_api.format_url(obiekt = "wojewodztwo", wynik = ["nazwa","teryt"])
+        try:
+            wojewodztwa = uldk_api.send_request(url)
+        except RequestException as e:
+            self.iface.messageBar().pushCritical("","Błąd pobierania listy województw - odpowiedź serwera: '{}'".format(str(e)))
+            return []
+        return wojewodztwa
+        
+    def get_powiaty(self, teryt = ""):
+        """Pobranie wszystkich powiatów w kraju, lub dla województwa o podanym teryt"""
+        url = uldk_api.format_url(obiekt = "powiat", wynik = ["nazwa","teryt"], filter_ = teryt)
+        try:
+            powiaty = uldk_api.send_request(url)
+        except RequestException as e:
+            self.iface.messageBar().pushCritical("","Błąd pobierania listy powiatów - odpowiedź serwera: '{}'".format(str(e)))
+            return []
+        return powiaty
+
+    def get_gminy(self, teryt = ""):
+        """Pobranie wszystkich gmin w kraju, lub dla powiatu o podanym teryt"""
+        url = uldk_api.format_url(obiekt = "gmina", wynik = ["nazwa","teryt"], filter_ = teryt)
+        try:
+            gminy = uldk_api.send_request(url)
+        except RequestException as e:
+            self.iface.messageBar().pushCritical("","Błąd pobierania listy gmin - odpowiedź serwera: '{}'".format(str(e)))
+            return []
+        return gminy
+
+    def get_obreby(self, teryt):
+        """Pobranie obrębów dla danego terytu gminy"""
+        url = uldk_api.format_url(obiekt = "obreb", wynik = ["nazwa","teryt"], filter_ = teryt)
+        try:
+            obreby = uldk_api.send_request(url)
+        except RequestException as e:
+            self.iface.messageBar().pushCritical("","Błąd pobierania listy obrębów - odpowiedź serwera: '{}'".format(str(e)))
+            return []
+        return obreby
+
+    def get_dzialka(self, id, format_ = "geom_wkt"):
+        """Pobranie działki o danym id"""
+
+        url = uldk_api.format_url(obiekt = "dzialka", wynik = format_, filter_ = id)
+        try:
+            dzialka_wkt = uldk_api.send_request(url)
+        except RequestException as e:
+            self.iface.messageBar().pushCritical("","Błąd pobierania działki - odpowiedź serwera: '{}'".format(str(e)))
+            raise e
+        return dzialka_wkt[0]
+
+
+    def WKT_to_QgsVectorlayer(self, wkt, epsg = "2180", layer_name = "warstwa_wynikowa"):
+
+        ewkt = wkt.split(";")
+        
+        if len(ewkt) == 2:
+            epsg = ewkt[0].split("=")[1]
+            wkt = ewkt[1]
+
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom.isGeosValid():
+            raise InvalidGeomException("Nie udało się przetworzyć geometrii działki")
+        layer = QgsVectorLayer("Polygon?crs=EPSG:" + epsg, layer_name, "memory")
+        layer.startEditing()
+        layer.dataProvider().addAttributes([QgsField("pow_mkw", QVariant.String)])
+        feat = QgsFeature()
+        feat.setGeometry(geom)
+        area = geom.area()
+        feat.setAttributes([area])
+        layer.dataProvider().addFeature(feat)
+        layer.commitChanges()
+
+        return layer
 
     def addWMS(self):
         if not QgsProject.instance().mapLayersByName(
@@ -464,4 +462,3 @@ class wyszukiwarkaDzialek:
             QgsProject.instance().addMapLayer(layer)
         else:
             pass
-
