@@ -401,7 +401,7 @@ class wyszukiwarkaDzialek:
             def get_dzialka_arkusz():
                 teryt = self.dockwidget.combobox_arkusz.currentText()
                 self.add_dzialka_layer(teryt)
-            ids = [dzialka.split("|")[0].split(".")[-2] for dzialka in dzialki]
+            ids = [dzialka.split("|")[0] for dzialka in dzialki]
 
             self.dockwidget.combobox_arkusz.show()
             self.dockwidget.label_arkusz.show()
