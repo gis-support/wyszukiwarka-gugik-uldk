@@ -297,6 +297,7 @@ class wyszukiwarkaDzialek:
         dzi_id = self.dockwidget.texEdDzi.text()
         identyfikator = "{}.{}".format(obr_id,dzi_id)
         self.dockwidget.labelCurrentID.setText(identyfikator)
+        self.hide_arkusz_section() #TODO przenieść w sensowne miejsce
 
 
     
@@ -447,8 +448,13 @@ class wyszukiwarkaDzialek:
         try:
             obreby = uldk_api.send_request(url)
         except RequestException as e:
-            self.iface.messageBar().pushCritical("","Błąd pobierania listy obrębów - odpowiedź serwera: '{}'".format(str(e)))
-            return []
+            teryt = teryt.split("_")[0]
+            url = uldk_api.format_url(obiekt = "obreb", wynik = ["nazwa","teryt"], filter_ = teryt)
+            try:
+                obreby = uldk_api.send_request(url)
+            except RequestException as e:
+                self.iface.messageBar().pushCritical("","Błąd pobierania listy obrębów - odpowiedź serwera: '{}'".format(str(e)))
+                return []
         return obreby
 
     def get_dzialka(self, id, format_ = "teryt,geom_wkt"):
