@@ -238,7 +238,7 @@ class wyszukiwarkaDzialek:
         try:
             urlopen("http://google.com")
         except:
-            self.iface.messageBar().pushWarning("Ostrzeżenie!", "Brak połączenia z Internetem!")
+            self.iface.messageBar().pushWarning("Wtyczka ULDK", "Brak połączenia z Internetem!")
 
         if not self.pluginIsActive:
             self.pluginIsActive = True
@@ -275,11 +275,22 @@ class wyszukiwarkaDzialek:
             self.dockwidget.comBoxGmi.activated.connect(self.argumentsFilled)
             self.dockwidget.labelCurrentID.textChanged.connect(self.argumentsFilled)
 
-            self.dockwidget.btnSearch.clicked.connect(self.add_dzialka_layer)
+            self.dockwidget.btnSearch.clicked.connect(self.search_dzialka)
             self.dockwidget.btnWMS.clicked.connect(self.addWMS)
 
             self.fillComBoxWoj()
 
+            self.dockwidget.label_info.setPixmap(QPixmap(':/plugins/plugin/info.png'))
+            self.dockwidget.label_arkusz.hide()
+            self.dockwidget.combobox_arkusz.hide()
+
+            self.dockwidget.label_select_by_coords.hide()
+            self.dockwidget.frame_select_by_coords.hide()
+
+    def hide_arkusz_section(self):
+        self.dockwidget.combobox_arkusz.clear()
+        self.dockwidget.label_arkusz.hide()
+        self.dockwidget.combobox_arkusz.hide()
 
     def SetCurrentID(self):
         obr_id = obr_id = self.dockwidget.comBoxObr.currentText().split(" | ")[1]
@@ -314,6 +325,7 @@ class wyszukiwarkaDzialek:
     def fillComBoxWoj(self):
         wojewodztwa =  self.get_wojewodztwa()
         self.fillComBox(self.dockwidget.comBoxWoj, wojewodztwa)
+        self.hide_arkusz_section()
 
     def fillComBoxPow(self):
         self.dockwidget.comBoxGmi.clear()
@@ -326,6 +338,7 @@ class wyszukiwarkaDzialek:
 
         powiaty = self.get_powiaty(woj_teryt)
         self.fillComBox(self.dockwidget.comBoxPow, powiaty)
+        self.hide_arkusz_section()
 
     def fillComBoxGmi(self):
         self.dockwidget.comBoxObr.clear()
@@ -336,6 +349,7 @@ class wyszukiwarkaDzialek:
         pow_teryt = pow.split(" | ")[1]
         gminy = self.get_gminy(pow_teryt)
         self.fillComBox(self.dockwidget.comBoxGmi, gminy)
+        self.hide_arkusz_section()
 
     def fillComBoxObr(self):
         self.dockwidget.comBoxObr.clear() 
@@ -345,31 +359,57 @@ class wyszukiwarkaDzialek:
         gmi_teryt = gmi.split(" | ")[1]
         obreby = self.get_obreby(gmi_teryt)
         self.fillComBox(self.dockwidget.comBoxObr, obreby)
+        self.hide_arkusz_section()
         
-    def add_dzialka_layer(self):
 
-        dzialka_id = self.dockwidget.labelCurrentID.text()
-        dzialka_numer = dzialka_id.split(".")[2]
+    #def fill_combobox_arkusze(self):
+
+    def search_dzialka(self):
+        teryt = self.dockwidget.labelCurrentID.text()
+        dzialka_numer = teryt.split(".")[-1]
         if dzialka_numer == "":
-            self.iface.messageBar().pushWarning("","Podaj numer działki")
+            self.iface.messageBar().pushWarning("Wtyczka ULDK","Podaj numer działki")
             return
+        
+        self.add_dzialka_layer(teryt)
+
+
+    def add_dzialka_layer(self, teryt):
+
         try:
-            ewkt = self.get_dzialka(dzialka_id)
+            dzialki = self.get_dzialka(teryt)
         except RequestException as e:
             return
-        try:
-            layer = self.WKT_to_QgsVectorlayer(ewkt, layer_name = "dzialka_" + dzialka_id)
-        except InvalidGeomException as e:
-            self.iface.messageBar().pushCritical("",str(e))
-        QgsProject.instance().addMapLayer(layer)
+        if len(dzialki) == 1:
+            dzialka = dzialki[0]
+            ewkt = dzialka.split("|")[1]
+            try:
+                layer = self.WKT_to_QgsVectorlayer(ewkt, layer_name = "dzialka_" + teryt)
+            except InvalidGeomException as e:
+                self.iface.messageBar().pushCritical("",str(e))
+            QgsProject.instance().addMapLayer(layer)
 
-        #styl
-        myRenderer  = layer.renderer()
-        mySymbol1 = QgsFillSymbol.createSimple({'color':'white', 'color_border':'red','width_border':'2'})
-        myRenderer.setSymbol(mySymbol1)
-        layer.setOpacity(0.35)
-        layer.triggerRepaint()
-        self.iface.zoomToActiveLayer()
+            #styl
+            myRenderer  = layer.renderer()
+            mySymbol1 = QgsFillSymbol.createSimple({'color':'white', 'color_border':'red','width_border':'2'})
+            myRenderer.setSymbol(mySymbol1)
+            layer.setOpacity(0.35)
+            layer.triggerRepaint()
+            self.iface.zoomToActiveLayer()
+        else:
+            def get_dzialka_arkusz():
+                teryt = self.dockwidget.combobox_arkusz.currentText()
+                self.add_dzialka_layer(teryt)
+            ids = [dzialka.split("|")[0] for dzialka in dzialki]
+
+            self.dockwidget.combobox_arkusz.show()
+            self.dockwidget.label_arkusz.show()
+            self.dockwidget.combobox_arkusz.clear()
+            self.dockwidget.combobox_arkusz.addItems(ids)
+            teryt = self.dockwidget.combobox_arkusz.currentText()
+            self.dockwidget.combobox_arkusz.activated.connect( get_dzialka_arkusz )
+            self.iface.messageBar().pushMessage("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach. Wybierz jeden z nowej listy.", level = 0, duration = 15)
+        
 
     def get_wojewodztwa(self):
         """Pobranie wszystkich województw w kraju"""
@@ -411,16 +451,17 @@ class wyszukiwarkaDzialek:
             return []
         return obreby
 
-    def get_dzialka(self, id, format_ = "geom_wkt"):
+    def get_dzialka(self, id, format_ = "teryt,geom_wkt"):
         """Pobranie działki o danym id"""
 
         url = uldk_api.format_url(obiekt = "dzialka", wynik = format_, filter_ = id)
         try:
-            dzialka_wkt = uldk_api.send_request(url)
+            result = uldk_api.send_request(url)
         except RequestException as e:
             self.iface.messageBar().pushCritical("","Błąd pobierania działki - odpowiedź serwera: '{}'".format(str(e)))
             raise e
-        return dzialka_wkt[0]
+ 
+        return result
 
 
     def WKT_to_QgsVectorlayer(self, wkt, epsg = "2180", layer_name = "warstwa_wynikowa"):

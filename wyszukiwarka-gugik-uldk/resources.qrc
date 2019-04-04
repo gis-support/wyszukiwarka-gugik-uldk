@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/plugins/plugin" >
         <file>logo_thumb.png</file>
+        <file>info.png</file>
     </qresource>
 </RCC>
