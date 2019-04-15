@@ -14,9 +14,9 @@
    <string>Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout_3">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QLabel" name="lblInfo">
+     <widget class="QLabel" name="label_uldk_info">
       <property name="text">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dowiedz się więcej o &lt;a href=&quot;http://uldk.dzialkikatastralne.pl/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ULDK&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
@@ -45,7 +45,7 @@
      </spacer>
     </item>
     <item>
-     <widget class="QLabel" name="label_8">
+     <widget class="QLabel" name="label_seatch_by_teryt">
       <property name="text">
        <string>Wprowadź identyfikator działki</string>
       </property>
@@ -61,54 +61,54 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="label_province">
          <property name="text">
           <string>Województwo:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comBoxWoj"/>
+        <widget class="QComboBox" name="combobox_province"/>
        </item>
        <item>
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="label_county">
          <property name="text">
           <string>Powiat:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comBoxPow"/>
+        <widget class="QComboBox" name="combobox_county"/>
        </item>
        <item>
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="label_municipality">
          <property name="text">
           <string>Gmina:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comBoxGmi"/>
+        <widget class="QComboBox" name="combobox_municipality"/>
        </item>
        <item>
-        <widget class="QLabel" name="label_4">
+        <widget class="QLabel" name="label_precinct">
          <property name="text">
           <string>Obręb:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comBoxObr"/>
+        <widget class="QComboBox" name="combobox_precinct"/>
        </item>
        <item>
-        <widget class="QLabel" name="label_5">
+        <widget class="QLabel" name="label_teryt">
          <property name="text">
           <string>Numer działki:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="texEdDzi">
+        <widget class="QLineEdit" name="lineedit_teryt">
          <property name="enabled">
           <bool>true</bool>
          </property>
@@ -129,7 +129,7 @@
        <item>
         <layout class="QFormLayout" name="formLayout">
          <item row="0" column="0">
-          <widget class="QLabel" name="label_6">
+          <widget class="QLabel" name="label_full_id">
            <property name="text">
             <string>Pełny numer działki (opcjonalny)</string>
            </property>
@@ -157,7 +157,7 @@
         </layout>
        </item>
        <item>
-        <widget class="QLineEdit" name="labelCurrentID">
+        <widget class="QLineEdit" name="lineedit_full_id">
          <property name="enabled">
           <bool>true</bool>
          </property>
@@ -175,25 +175,51 @@
          </property>
         </widget>
        </item>
+       <item>
+        <spacer name="verticalSpacer_7">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Minimum</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>5</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="button_search">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Szukaj</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QLabel" name="label_select_by_coords">
+     <widget class="QLabel" name="label_search_by_coords">
       <property name="text">
        <string>Lub współrzędne</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="frame_select_by_coords">
+     <widget class="QFrame" name="frame_search_by_coords">
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
       </property>
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
         <layout class="QFormLayout" name="formLayout_2">
          <item row="0" column="0">
@@ -204,7 +230,7 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QLineEdit" name="lineEdit"/>
+          <widget class="QLineEdit" name="line_edit_x"/>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_11">
@@ -214,12 +240,12 @@
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QLineEdit" name="lineEdit_2"/>
+          <widget class="QLineEdit" name="line_edit_y"/>
          </item>
         </layout>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="button_get_from_map">
          <property name="maximumSize">
           <size>
            <width>115</width>
@@ -231,33 +257,17 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="button_search_by_coords">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Szukaj</string>
+         </property>
+        </widget>
+       </item>
       </layout>
-     </widget>
-    </item>
-    <item>
-     <spacer name="verticalSpacer_5">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Minimum</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>5</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <widget class="QPushButton" name="btnSearch">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>Szukaj</string>
-      </property>
      </widget>
     </item>
     <item>
@@ -277,14 +287,18 @@
      </spacer>
     </item>
     <item>
-     <widget class="QLabel" name="label_arkusz">
+     <widget class="QLabel" name="label_sheet">
       <property name="text">
        <string>Arkusz:</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QComboBox" name="combobox_arkusz"/>
+     <widget class="QComboBox" name="combobox_sheet">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+     </widget>
     </item>
     <item>
      <spacer name="verticalSpacer_3">
@@ -326,7 +340,7 @@
      </spacer>
     </item>
     <item>
-     <widget class="QPushButton" name="btnWMS">
+     <widget class="QPushButton" name="button_wms">
       <property name="text">
        <string>Dodaj WMS do mapy</string>
       </property>
