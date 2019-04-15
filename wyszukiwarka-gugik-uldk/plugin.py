@@ -21,36 +21,31 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QVariant
+import json
+import locale
+import operator
+import os.path
+import time
+from collections import OrderedDict
+from urllib.request import urlopen
 
+import requests
+from PyQt5.QtCore import (QCoreApplication, QSettings, Qt, QTranslator,
+                          QVariant, qVersion)
+from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QAction
 from qgis.core import *
 from qgis.gui import QgsMessageBar
 
-from PyQt5.QtGui import *
-# Initialize Qt resources from file resources.py
-from .resources import *
-
 # Import the code for the DockWidget
 from .plugin_dockwidget import wyszukiwarkaDzialekDockWidget
-import os.path
-import json
-import operator
-import locale
+from .resources import *
+from .tools.exceptions import *
+from .tools.search import (PointGetter, SearchForm, SearchPointForm,
+                           SearchTerytForm)
+from .tools.uldk_api import ULDKSearchPoint, ULDKSearchTeryt
 
-import requests
-import time
-from urllib.request import urlopen
-from collections import OrderedDict
 
-try: 
-    from .uldk_api import ULDK_API as uldk_api
-except ImportError:
-    from uldk_api import ULDK_API as uldk_api
-try:
-    from .exceptions import *
-except ImportError:
-    from exceptions import *
 class wyszukiwarkaDzialek:
     
     folder = os.path.dirname(os.path.abspath(__file__))
@@ -67,7 +62,7 @@ class wyszukiwarkaDzialek:
         """
         # Save reference to the QGIS interface
         self.iface = iface
-
+        self.canvas = self.iface.mapCanvas()
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
 
@@ -88,7 +83,6 @@ class wyszukiwarkaDzialek:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
-        # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'wyszukiwarkaDzialek')
         self.toolbar.setObjectName(u'wyszukiwarkaDzialek')
 
@@ -96,8 +90,10 @@ class wyszukiwarkaDzialek:
 
         self.pluginIsActive = False
         self.dockwidget = None
-        
-
+        self.point_getter = None
+        self.search_form = None
+        self.search_point_form = None
+        self.search_teryt_form = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -125,7 +121,8 @@ class wyszukiwarkaDzialek:
         add_to_toolbar=True,
         status_tip=None,
         whats_this=None,
-        parent=None):
+        parent=None,
+        checkable=False):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -169,6 +166,7 @@ class wyszukiwarkaDzialek:
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
+        action.setCheckable(checkable)
 
         if status_tip is not None:
             action.setStatusTip(status_tip)
@@ -198,7 +196,7 @@ class wyszukiwarkaDzialek:
             text=self.tr(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta'),
             callback=self.run,
             parent=self.iface.mainWindow())
-
+        
     #--------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -208,15 +206,18 @@ class wyszukiwarkaDzialek:
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
-
+        
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
         # Commented next statement since it causes QGIS crashe
         # when closing the docked window:
         self.dockwidget = None
-
+        self.search_form = None
+        self.search_point_form = None
+        self.search_teryt_form = None
         self.pluginIsActive = False
-
+        self.point_getter = None
+        self.canvas.destinationCrsChanged.disconnect()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -258,240 +259,40 @@ class wyszukiwarkaDzialek:
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            # self.dockwidget.labelLogo.setPixmap(QPixmap(self.path_logo))
-            # self.dockwidget.labelLogo.setScaledContents(True)
 
             self.dockwidget.show()
 
-            self.dockwidget.comBoxWoj.activated.connect(self.fillComBoxPow)
-            self.dockwidget.comBoxPow.activated.connect(self.fillComBoxGmi)
-            self.dockwidget.comBoxGmi.activated.connect(self.fillComBoxObr)
-            self.dockwidget.comBoxObr.activated.connect(self.SetCurrentID)
-
-            self.dockwidget.texEdDzi.textChanged.connect(self.SetCurrentID)
-
-            self.dockwidget.comBoxWoj.activated.connect(self.argumentsFilled)
-            self.dockwidget.comBoxPow.activated.connect(self.argumentsFilled)
-            self.dockwidget.comBoxGmi.activated.connect(self.argumentsFilled)
-            self.dockwidget.labelCurrentID.textChanged.connect(self.argumentsFilled)
-
-            self.dockwidget.btnSearch.clicked.connect(self.search_dzialka)
-            self.dockwidget.btnWMS.clicked.connect(self.addWMS)
-
-            self.fillComBoxWoj()
-
             self.dockwidget.label_info.setPixmap(QPixmap(':/plugins/plugin/info.png'))
-            self.dockwidget.label_arkusz.hide()
-            self.dockwidget.combobox_arkusz.hide()
 
-            self.dockwidget.label_select_by_coords.hide()
-            self.dockwidget.frame_select_by_coords.hide()
+            self.search_form = SearchForm(
+                self,
+                self.dockwidget.combobox_sheet
+            )
 
-    def hide_arkusz_section(self):
-        self.dockwidget.combobox_arkusz.clear()
-        self.dockwidget.label_arkusz.hide()
-        self.dockwidget.combobox_arkusz.hide()
+            self.teryt_search_form = SearchTerytForm(
+                self.search_form,
+                self.dockwidget.button_search,
+                self.dockwidget.combobox_province,
+                self.dockwidget.combobox_county,
+                self.dockwidget.combobox_municipality,
+                self.dockwidget.combobox_precinct,
+                self.dockwidget.lineedit_teryt,
+                self.dockwidget.lineedit_full_id     
+            )
 
-    def SetCurrentID(self):
-        obr_id = obr_id = self.dockwidget.comBoxObr.currentText().split(" | ")[1]
-        dzi_id = self.dockwidget.texEdDzi.text()
-        identyfikator = "{}.{}".format(obr_id,dzi_id)
-        self.dockwidget.labelCurrentID.setText(identyfikator)
-        self.hide_arkusz_section() #TODO przenieść w sensowne miejsce
+            self.point_getter = PointGetter(self)
+            self.search_point_form = SearchPointForm(
+                self.search_form,
+                self.dockwidget.button_search_by_coords,
+                self.dockwidget.button_get_from_map,
+                self.dockwidget.line_edit_x, 
+                self.dockwidget.line_edit_y 
+            )
 
+            self.dockwidget.button_get_from_map.clicked.connect( lambda : self.canvas.setMapTool( self.point_getter) )
+            self.point_getter.register(self.search_point_form)
+            self.canvas.destinationCrsChanged.connect(lambda : self.search_point_form.recalculate_xy(self.canvas.mapSettings().destinationCrs()))
 
-    
-    def argumentsFilled(self):
-        enabled = (self.dockwidget.comBoxWoj.currentText() != "" and
-                self.dockwidget.comBoxPow.currentText() != "" and
-                self.dockwidget.comBoxGmi.currentText() != "" and
-                self.dockwidget.comBoxObr.currentText() != "" and
-                self.dockwidget.texEdDzi.text() != "") or self.dockwidget.labelCurrentID.text() != ""
-        self.dockwidget.btnSearch.setEnabled(enabled)
-
-    def fillComBox(self, target, content_list, in_separator = "|", out_separator = " | ", clear = True, first_element_empty = True):
-        if clear:
-            target.clear()
-        content_format = []
-        if first_element_empty:
-            content_format.append("")
-        for e in content_list:
-            spl = e.split( in_separator )
-            try:
-                content_format.append("{}{sep}{}".format( spl[0], spl[1], sep = out_separator ))
-            except:
-                continue
-        target.addItems(content_format)
-
-    def fillComBoxWoj(self):
-        wojewodztwa =  self.get_wojewodztwa()
-        self.fillComBox(self.dockwidget.comBoxWoj, wojewodztwa)
-        self.hide_arkusz_section()
-
-    def fillComBoxPow(self):
-        self.dockwidget.comBoxGmi.clear()
-        self.dockwidget.comBoxObr.clear()
-
-        woj = self.dockwidget.comBoxWoj.currentText()
-        if woj == "":
-            return
-        woj_teryt = woj.split(" | ")[1]
-
-        powiaty = self.get_powiaty(woj_teryt)
-        self.fillComBox(self.dockwidget.comBoxPow, powiaty)
-        self.hide_arkusz_section()
-
-    def fillComBoxGmi(self):
-        self.dockwidget.comBoxObr.clear()
-
-        pow = self.dockwidget.comBoxPow.currentText()
-        if pow == "":
-            return
-        pow_teryt = pow.split(" | ")[1]
-        gminy = self.get_gminy(pow_teryt)
-        self.fillComBox(self.dockwidget.comBoxGmi, gminy)
-        self.hide_arkusz_section()
-
-    def fillComBoxObr(self):
-        self.dockwidget.comBoxObr.clear() 
-        gmi = self.dockwidget.comBoxGmi.currentText()
-        if gmi == "":
-            return
-        gmi_teryt = gmi.split(" | ")[1]
-        obreby = self.get_obreby(gmi_teryt)
-        self.fillComBox(self.dockwidget.comBoxObr, obreby)
-        self.hide_arkusz_section()
-        
-
-    #def fill_combobox_arkusze(self):
-
-    def search_dzialka(self):
-        teryt = self.dockwidget.labelCurrentID.text()
-        dzialka_numer = teryt.split(".")[-1]
-        if dzialka_numer == "":
-            self.iface.messageBar().pushWarning("Wtyczka ULDK","Podaj numer działki")
-            return
-        
-        self.add_dzialka_layer(teryt)
-
-
-    def add_dzialka_layer(self, teryt):
-
-        try:
-            dzialki = self.get_dzialka(teryt)
-        except RequestException as e:
-            return
-        if len(dzialki) == 1:
-            dzialka = dzialki[0]
-            ewkt = dzialka.split("|")[1]
-            try:
-                layer = self.WKT_to_QgsVectorlayer(ewkt, layer_name = "dzialka_" + teryt)
-            except InvalidGeomException as e:
-                self.iface.messageBar().pushCritical("",str(e))
-            QgsProject.instance().addMapLayer(layer)
-
-            #styl
-            myRenderer  = layer.renderer()
-            mySymbol1 = QgsFillSymbol.createSimple({'color':'white', 'color_border':'red','width_border':'2'})
-            myRenderer.setSymbol(mySymbol1)
-            layer.setOpacity(0.35)
-            layer.triggerRepaint()
-            self.iface.zoomToActiveLayer()
-        else:
-            def get_dzialka_arkusz():
-                teryt = self.dockwidget.combobox_arkusz.currentText()
-                self.add_dzialka_layer(teryt)
-            ids = [dzialka.split("|")[0] for dzialka in dzialki]
-
-            self.dockwidget.combobox_arkusz.show()
-            self.dockwidget.label_arkusz.show()
-            self.dockwidget.combobox_arkusz.clear()
-            self.dockwidget.combobox_arkusz.addItems(ids)
-            teryt = self.dockwidget.combobox_arkusz.currentText()
-            self.dockwidget.combobox_arkusz.activated.connect( get_dzialka_arkusz )
-            self.iface.messageBar().pushMessage("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach. Wybierz jeden z nowej listy.", level = 0, duration = 15)
-        
-
-    def get_wojewodztwa(self):
-        """Pobranie wszystkich województw w kraju"""
-        url = uldk_api.format_url(obiekt = "wojewodztwo", wynik = ["nazwa","teryt"])
-        try:
-            wojewodztwa = uldk_api.send_request(url)
-        except RequestException as e:
-            self.iface.messageBar().pushCritical("","Błąd pobierania listy województw - odpowiedź serwera: '{}'".format(str(e)))
-            return []
-        return wojewodztwa
-        
-    def get_powiaty(self, teryt = ""):
-        """Pobranie wszystkich powiatów w kraju, lub dla województwa o podanym teryt"""
-        url = uldk_api.format_url(obiekt = "powiat", wynik = ["nazwa","teryt"], filter_ = teryt)
-        try:
-            powiaty = uldk_api.send_request(url)
-        except RequestException as e:
-            self.iface.messageBar().pushCritical("","Błąd pobierania listy powiatów - odpowiedź serwera: '{}'".format(str(e)))
-            return []
-        return powiaty
-
-    def get_gminy(self, teryt = ""):
-        """Pobranie wszystkich gmin w kraju, lub dla powiatu o podanym teryt"""
-        url = uldk_api.format_url(obiekt = "gmina", wynik = ["nazwa","teryt"], filter_ = teryt)
-        try:
-            gminy = uldk_api.send_request(url)
-        except RequestException as e:
-            self.iface.messageBar().pushCritical("","Błąd pobierania listy gmin - odpowiedź serwera: '{}'".format(str(e)))
-            return []
-        return gminy
-
-    def get_obreby(self, teryt):
-        """Pobranie obrębów dla danego terytu gminy"""
-        url = uldk_api.format_url(obiekt = "obreb", wynik = ["nazwa","teryt"], filter_ = teryt)
-        try:
-            obreby = uldk_api.send_request(url)
-        except RequestException as e:
-            teryt = teryt.split("_")[0]
-            url = uldk_api.format_url(obiekt = "obreb", wynik = ["nazwa","teryt"], filter_ = teryt)
-            try:
-                obreby = uldk_api.send_request(url)
-            except RequestException as e:
-                self.iface.messageBar().pushCritical("","Błąd pobierania listy obrębów - odpowiedź serwera: '{}'".format(str(e)))
-                return []
-        return obreby
-
-    def get_dzialka(self, id, format_ = "teryt,geom_wkt"):
-        """Pobranie działki o danym id"""
-
-        url = uldk_api.format_url(obiekt = "dzialka", wynik = format_, filter_ = id)
-        try:
-            result = uldk_api.send_request(url)
-        except RequestException as e:
-            self.iface.messageBar().pushCritical("","Błąd pobierania działki - odpowiedź serwera: '{}'".format(str(e)))
-            raise e
- 
-        return result
-
-
-    def WKT_to_QgsVectorlayer(self, wkt, epsg = "2180", layer_name = "warstwa_wynikowa"):
-
-        ewkt = wkt.split(";")
-        
-        if len(ewkt) == 2:
-            epsg = ewkt[0].split("=")[1]
-            wkt = ewkt[1]
-
-        geom = QgsGeometry.fromWkt(wkt)
-        if not geom.isGeosValid():
-            raise InvalidGeomException("Nie udało się przetworzyć geometrii działki")
-        layer = QgsVectorLayer("Polygon?crs=EPSG:" + epsg, layer_name, "memory")
-        layer.startEditing()
-        layer.dataProvider().addAttributes([QgsField("pow_mkw", QVariant.String)])
-        feat = QgsFeature()
-        feat.setGeometry(geom)
-        area = geom.area()
-        feat.setAttributes([area])
-        layer.dataProvider().addFeature(feat)
-        layer.commitChanges()
-
-        return layer
 
     def addWMS(self):
         if not QgsProject.instance().mapLayersByName(

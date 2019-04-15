@@ -10,7 +10,7 @@
 name=Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta
 qgisMinimumVersion=3.0
 description=Wtyczka służąca do pobierania granic działek ewidencyjnych.
-version=1.5.5
+version=1.6
 author=Studenci UMCS uczestniczący w programie: Geo4Work2018
 email=kamil.kozik@gis-support.pl 
 
@@ -23,7 +23,7 @@ repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog=Obsługa sytuacji gdy działka znajduje się na wielu arkuszach
+changelog=Pobieranie działki poprzez kliknięcie na mapę
 
 
 # Tags are comma separated with spaces allowed
