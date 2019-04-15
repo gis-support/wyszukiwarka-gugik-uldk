@@ -262,7 +262,10 @@ class wyszukiwarkaDzialek:
 
             self.dockwidget.show()
 
-            self.dockwidget.label_info.setPixmap(QPixmap(':/plugins/plugin/info.png'))
+            self.dockwidget.label_info_full_id.setPixmap(QPixmap(':/plugins/plugin/info.png'))
+            self.dockwidget.label_info_full_id.setToolTip("Możesz pominąć wypełnianie powyższych pól\ni ręcznie wpisać kod TERYT działki.")
+            self.dockwidget.label_info_sheet.setPixmap(QPixmap(':/plugins/plugin/info.png'))
+            self.dockwidget.label_info_sheet.setToolTip("W bazie danych może istnieć kilka działek o takim samym kodzie TERYT, każda na innym arkuszu.\nW takiej sytuacji możesz wybrać z tej listy działkę której szukasz.")
 
             self.search_form = SearchForm(
                 self,
