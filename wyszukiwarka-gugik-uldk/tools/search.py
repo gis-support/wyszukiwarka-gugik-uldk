@@ -1,9 +1,11 @@
+import random
+
 from PyQt5.QtCore import QVariant
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform,
                        QgsCoordinateTransformContext, QgsFeature, QgsField,
-                       QgsGeometry, QgsPoint, QgsPointXY, QgsProject,
-                       QgsVectorLayer)
-from qgis.gui import QgsMapToolEmitPoint
+                       QgsFillSymbol, QgsGeometry, QgsPoint, QgsPointXY,
+                       QgsProject, QgsVectorLayer)
+from qgis.gui import QgsMapToolEmitPoint, QgsMessageBarItem
 
 from .exceptions import RequestException
 from .uldk_api import ULDKSearchPoint, ULDKSearchTeryt
@@ -60,12 +62,12 @@ class PointGetter(QgsMapToolEmitPoint):
 class ChainedCombobox:
     """Wraper dla QT.Combobox przechowujący referencję do logicznie następnego QT.Combobox"""
 
-    def __init__(self, level, c, next_chained = None, on_activated = None):
+    def __init__(self, level, c, next_chained = None, on_activated_action = None):
         self.level = level
         self.c = c
         self.next_chained = next_chained
-
-        self.c.activated.connect(on_activated or self.fill_next)
+        self.on_activated_action = on_activated_action or self.fill_next
+        self.c.activated.connect(self.on_activated)
 
     def clear(self):
         self.c.clear()
@@ -73,8 +75,8 @@ class ChainedCombobox:
             self.next_chained.clear()
 
     def on_activated(self):
-        if self.c.currentText():
-            self.on_activated()
+        if self.c.currentText() != "":
+            self.on_activated_action()
         else:
             self.next_chained.clear()
 
@@ -106,8 +108,11 @@ class SearchForm:
         self.canvas = self.iface.mapCanvas()
         self.combobox_sheet = combobox_sheet
         self.combobox_sheet.activated.connect( self.__search_from_sheet )
+        self.message_bar_item = None
 
     def search(self, uldk_search):
+        self.combobox_sheet.clear()
+        self.combobox_sheet.setEnabled(False)
         try:
             result = uldk_search.search()
         except RequestException as e:
@@ -119,12 +124,17 @@ class SearchForm:
             self.combobox_sheet.setEnabled(True)
             self.combobox_sheet.clear()
             self.combobox_sheet.addItems( r.split("|")[0] for r in result )
-
+            self.message_bar_item = QgsMessageBarItem("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach map. Wybierz z listy jedną z nich.", duration = 10)
+            self.iface.messageBar().pushWidget(self.message_bar_item)
+            
         else:
-            self.combobox_sheet.clear()
-            self.combobox_sheet.setEnabled(False)
+            # self.combobox_sheet.clear()
+            # self.combobox_sheet.setEnabled(False)
             name, geom_wkt = result[0].split("|") 
             self.__add_layer(name, geom_wkt)
+            if self.message_bar_item:
+                self.iface.messageBar().popWidget(self.message_bar_item)
+                self.message_bar_item = None
 
     def __search_from_sheet(self):
         """Pobiera z Comboboxa arkuszy wybrany teryt i na jego podstawie przekazuje dalej wyszukiwanie działki"""
@@ -153,6 +163,18 @@ class SearchForm:
         layer.dataProvider().addFeature(feat)
         layer.commitChanges()
         QgsProject.instance().addMapLayer(layer)
+        #self.__render_layer(layer)
+        self.iface.zoomToActiveLayer()
+
+    def __render_layer(self, layer):
+
+        r = lambda: random.randint(0,255)
+        myRenderer  = layer.renderer()
+        mySymbol1 = QgsFillSymbol.createSimple({'color':'white', "color_border": '#%02X%02X%02X' % (r(),r(),r()), 'width_border':'2'})
+        myRenderer.setSymbol(mySymbol1)
+        layer.setOpacity(0.35)
+        layer.triggerRepaint()
+        
 
 class SearchTerytForm(SearchForm):
 
@@ -163,7 +185,7 @@ class SearchTerytForm(SearchForm):
         self.parent = parent
 
         self.combobox_precinct = ChainedCombobox( "obreb", combobox_precinct,
-                    on_activated= lambda : self.lineedit_full_id.setText( self.combobox_precinct.c.currentText().split(" | ")[-1] ) )
+                    on_activated_action = lambda : self.lineedit_full_id.setText( self.combobox_precinct.c.currentText().split(" | ")[-1] ) )
         self.combobox_municipality = ChainedCombobox( "gmina", combobox_municipality, self.combobox_precinct )
         self.combobox_county = ChainedCombobox( "powiat", combobox_county, self.combobox_municipality )
         self.combobox_province = ChainedCombobox( "wojewodztwo", combobox_province, self.combobox_county )
@@ -178,9 +200,8 @@ class SearchTerytForm(SearchForm):
 
         self.button_search = button_search
 
-        self.lineedit_teryt.textChanged.connect( lambda x : self.lineedit_full_id.setText( "{}.{}".format(self.combobox_precinct.c.currentText().split(" | ")[-1] , x)))
+        self.lineedit_teryt.textChanged.connect( lambda x : self.lineedit_full_id.setText( ".".join(filter(lambda x : x != "", [self.combobox_precinct.c.currentText().split(" | ")[-1] , x]))))
         self.lineedit_full_id.textChanged.connect( lambda x : self.button_search.setEnabled( self.is_plot_id_valid(x) ) )
-
         self.button_search.clicked.connect( lambda : self.search(self.lineedit_full_id.text()))
 
     def search(self, teryt):
@@ -201,7 +222,7 @@ class SearchTerytForm(SearchForm):
     @classmethod
     def is_plot_id_valid(cls, plot_id):
 
-        if plot_id.endswith("."):
+        if plot_id.endswith(".") or plot_id.startswith("."):
             return False
         if plot_id != plot_id.strip():
             return False
