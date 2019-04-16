@@ -110,9 +110,10 @@ class SearchForm:
         self.combobox_sheet.activated.connect( self.__search_from_sheet )
         self.message_bar_item = None
 
-    def search(self, uldk_search):
-        self.combobox_sheet.clear()
-        self.combobox_sheet.setEnabled(False)
+    def search(self, uldk_search, clear_combobox_sheet = True):
+        if clear_combobox_sheet:
+            self.combobox_sheet.clear()
+            self.combobox_sheet.setEnabled(False)
         try:
             result = uldk_search.search()
         except RequestException as e:
@@ -141,7 +142,7 @@ class SearchForm:
         teryt = self.combobox_sheet.currentText()
         if teryt:
             uldk_search = ULDKSearchTeryt("dzialka", ("teryt", "geom_wkt"), teryt)
-            self.search(uldk_search)
+            self.search(uldk_search, False)
     
 
     def __add_layer(self, name, geom_wkt, epsg = 2180):

@@ -83,8 +83,8 @@ class wyszukiwarkaDzialek:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
-        self.toolbar = self.iface.addToolBar(u'wyszukiwarkaDzialek')
-        self.toolbar.setObjectName(u'wyszukiwarkaDzialek')
+        self.toolbar = self.iface.addToolBar(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
+        self.toolbar.setObjectName(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
 
         #print "** INITIALIZING wyszukiwarkaDzialek"
 
