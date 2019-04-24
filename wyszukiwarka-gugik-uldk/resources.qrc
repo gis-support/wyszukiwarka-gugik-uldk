@@ -2,5 +2,6 @@
     <qresource prefix="/plugins/plugin" >
         <file>logo_thumb.png</file>
         <file>info.png</file>
+        <file>intersect.png</file>
     </qresource>
 </RCC>

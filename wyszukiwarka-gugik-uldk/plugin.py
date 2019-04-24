@@ -42,7 +42,7 @@ from .plugin_dockwidget import wyszukiwarkaDzialekDockWidget
 from .resources import *
 from .tools.exceptions import *
 from .tools.search import (PointGetter, SearchForm, SearchPointForm,
-                           SearchTerytForm)
+                           SearchTerytForm, ResultCollector, PlotGetter)
 from .tools.uldk_api import ULDKSearchPoint, ULDKSearchTeryt
 
 
@@ -83,17 +83,22 @@ class wyszukiwarkaDzialek:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
-        self.toolbar = self.iface.addToolBar(u'wyszukiwarkaDzialek')
-        self.toolbar.setObjectName(u'wyszukiwarkaDzialek')
+        self.toolbar = self.iface.addToolBar(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
+        self.toolbar.setObjectName(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
 
         #print "** INITIALIZING wyszukiwarkaDzialek"
 
         self.pluginIsActive = False
         self.dockwidget = None
         self.point_getter = None
+        self.plot_getter = PlotGetter(self)
+        self.result_collector = ResultCollector(self, "Wyniki wyszukiwania ULDK", 2180)
+        self.plot_getter.register(self.result_collector)
         self.search_form = None
         self.search_point_form = None
         self.search_teryt_form = None
+        self.project = QgsProject.instance()
+        self.wms_layer = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -190,13 +195,20 @@ class wyszukiwarkaDzialek:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/plugin/logo_thumb.png'
+        base_directory = ':/plugins/plugin/'
         self.add_action(
-            icon_path,
+            os.path.join(base_directory, "logo_thumb.png"),
             text=self.tr(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta'),
             callback=self.run,
             parent=self.iface.mainWindow())
         
+        self.add_action(
+            os.path.join(base_directory, "intersect.png"),
+            text = "Identifykacja ULDK",
+            callback = lambda state : self.plot_getter.toggle(not state),
+            parent = self.iface.mainWindow(),
+            checkable = True
+        )    
     #--------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -213,11 +225,12 @@ class wyszukiwarkaDzialek:
         # when closing the docked window:
         self.dockwidget = None
         self.search_form = None
+        self.point_getter = None
         self.search_point_form = None
         self.search_teryt_form = None
         self.pluginIsActive = False
-        self.point_getter = None
         self.canvas.destinationCrsChanged.disconnect()
+        self.project.layersRemoved.disconnect()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -266,12 +279,12 @@ class wyszukiwarkaDzialek:
             self.dockwidget.label_info_full_id.setToolTip("Możesz pominąć wypełnianie powyższych pól\ni ręcznie wpisać kod TERYT działki.")
             self.dockwidget.label_info_sheet.setPixmap(QPixmap(':/plugins/plugin/info.png'))
             self.dockwidget.label_info_sheet.setToolTip("W bazie danych może istnieć kilka działek o takim samym kodzie TERYT, każda na innym arkuszu.\nW takiej sytuacji możesz wybrać z tej listy działkę której szukasz.")
-
+            
             self.search_form = SearchForm(
                 self,
                 self.dockwidget.combobox_sheet
             )
-
+            self.search_form.register(self.result_collector)
             self.teryt_search_form = SearchTerytForm(
                 self.search_form,
                 self.dockwidget.button_search,
@@ -282,8 +295,7 @@ class wyszukiwarkaDzialek:
                 self.dockwidget.lineedit_teryt,
                 self.dockwidget.lineedit_full_id     
             )
-
-            self.point_getter = PointGetter(self)
+        
             self.search_point_form = SearchPointForm(
                 self.search_form,
                 self.dockwidget.button_search_by_coords,
@@ -291,25 +303,27 @@ class wyszukiwarkaDzialek:
                 self.dockwidget.line_edit_x, 
                 self.dockwidget.line_edit_y 
             )
-
+            self.point_getter = PointGetter(self)
             self.dockwidget.button_get_from_map.clicked.connect( lambda : self.canvas.setMapTool( self.point_getter) )
             self.point_getter.register(self.search_point_form)
             self.canvas.destinationCrsChanged.connect(lambda : self.search_point_form.recalculate_xy(self.canvas.mapSettings().destinationCrs()))
+            self.dockwidget.button_wms.clicked.connect(lambda : self.addWMS())
+            self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
 
 
     def addWMS(self):
-        if not QgsProject.instance().mapLayersByName(
-                'Dzialki ULDK'):
-            url = ("contextualWMSLegend=0&"
-                   "crs=EPSG:2180&"
-                   "dpiMode=7&"
-                   "featureCount=10&"
-                   "format=image/png&"
-                   "layers=dzialki&layers=numery_dzialek&"
-                   "styles=&styles=&"
-                   "version=1.1.1&"
-                   "url=http://integracja.gugik.gov.pl/cgi-bin/KrajowaIntegracjaEwidencjiGruntow")
-            layer = QgsRasterLayer(url, 'Dzialki ULDK', 'wms')
-            QgsProject.instance().addMapLayer(layer)
-        else:
-            pass
+
+        url = ("contextualWMSLegend=0&"
+                "crs=EPSG:2180&"
+                "dpiMode=7&"
+                "featureCount=10&"
+                "format=image/png&"
+                "layers=dzialki&layers=numery_dzialek&"
+                "styles=&styles=&"
+                "version=1.1.1&"
+                "url=http://integracja.gugik.gov.pl/cgi-bin/KrajowaIntegracjaEwidencjiGruntow")
+        layer = QgsRasterLayer(url, 'Dzialki ULDK', 'wms')
+        layer.setCustomProperty("ULDK", "wms_layer")
+        self.wms_layer = layer
+        self.project.addMapLayer(self.wms_layer)
+        self.dockwidget.button_wms.setEnabled(False)
