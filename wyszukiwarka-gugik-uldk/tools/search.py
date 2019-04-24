@@ -19,6 +19,20 @@ class Listener:
     def update(self, *args, **kwargs):
         pass
 
+class Notifier:
+
+    def __init__(self, listeners = None):
+        self.listeners = listeners or set()
+    
+    def register(self, listener):
+        """Rejestruje obiekt listener jako obserwator zdarzenia"""
+        self.listeners.add(listener)
+
+    def notify(self, *args, **kwargs):
+        """Powiadamia wszystkich obserwatorów"""
+        for listener in self.listeners:
+            listener.update(*args, **kwargs)
+
 
 class PointCRS:
     """Wrapper dla QgsPoint w celu zachowania CRS"""
@@ -37,27 +51,49 @@ class PointCRS:
         return cls(point, crs)
 
 
-class PointGetter(QgsMapToolEmitPoint):
+class PointGetter(QgsMapToolEmitPoint, Notifier):
     
     def __init__(self, parent, listeners = None):
         self.parent = parent
         self.iface = parent.iface
         self.canvas = parent.canvas
         super(QgsMapToolEmitPoint, self).__init__(self.canvas)
+        super(Notifier, listeners)
+        
+        self.canvasClicked.connect(self.notify)
+
+    def notify(self, point):
+        
+        point_crs = PointCRS(point, self.canvas.mapSettings().destinationCrs())
+        super().notify(self, point_crs)
+
+class PlotGetter(QgsMapToolEmitPoint, Notifier):
+    def __init__(self, parent, listeners = None):
+        self.parent = parent
+        self.iface = parent.iface
+        self.canvas = parent.canvas
+        super(QgsMapToolEmitPoint, self).__init__(self.canvas)
+        super(Notifier, listeners)
         self.canvasClicked.connect(self.notify)
         self.listeners = listeners or set()
 
-    def register(self, listener):
-        """Rejestruje obiekt listener jako obserwator zdarzenia"""
-        self.listeners.add(listener)
-
     def notify(self, point):
-        """Powiadamia wszystkich obserwatorów"""
         point_crs = PointCRS(point, self.canvas.mapSettings().destinationCrs())
-        for listener in self.listeners:
-            listener.update(self, point_crs)
-        self.canvas.unsetMapTool(self)
-
+        x = point_crs.point.x()
+        y = point_crs.point.y()
+        srid = point_crs.crs.postgisSrid()
+        uldk_search = ULDKSearchPoint(
+            "dzialka",
+            ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"),
+            x,y, srid)
+        result = uldk_search.search()[0]
+        super().notify(self, result)
+    
+    def toggle(self, enabled):
+        if enabled:
+            self.canvas.unsetMapTool(self)
+        else:
+            self.canvas.setMapTool(self)
 
 class ChainedCombobox:
     """Wraper dla QT.Combobox przechowujący referencję do logicznie następnego QT.Combobox"""
@@ -99,16 +135,25 @@ class ChainedCombobox:
         target.c.addItems(items)
 
 
-class SearchForm:
+class SearchForm(Notifier):
 
-    def __init__(self, parent, combobox_sheet):
+    def __init__(self, parent, combobox_sheet, listeners = None):
 
         self.parent = parent
         self.iface = parent.iface
         self.canvas = self.iface.mapCanvas()
         self.combobox_sheet = combobox_sheet
         self.combobox_sheet.activated.connect( self.__search_from_sheet )
+        self.listeners = listeners or set()
         self.message_bar_item = None
+
+    def register(self, listener):
+        self.listeners.add(listener)
+
+    def notify(self, search_result):
+        for listener in self.listeners:
+            listener.update(self, search_result)
+        
 
     def search(self, uldk_search, clear_combobox_sheet = True):
         if clear_combobox_sheet:
@@ -124,15 +169,16 @@ class SearchForm:
         if len(result) > 1:
             self.combobox_sheet.setEnabled(True)
             self.combobox_sheet.clear()
-            self.combobox_sheet.addItems( r.split("|")[0] for r in result )
+            self.combobox_sheet.addItems( result )
             self.message_bar_item = QgsMessageBarItem("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach map. Wybierz z listy jedną z nich.", duration = 10)
             self.iface.messageBar().pushWidget(self.message_bar_item)
-            
         else:
-            # self.combobox_sheet.clear()
-            # self.combobox_sheet.setEnabled(False)
-            name, geom_wkt = result[0].split("|") 
-            self.__add_layer(name, geom_wkt)
+            uldk_search = ULDKSearchTeryt("dzialka",
+             ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"), result[0])
+            result = uldk_search.search()
+            self.combobox_sheet.clear()
+            self.combobox_sheet.setEnabled(False)
+            self.notify(result[0])
             if self.message_bar_item:
                 self.iface.messageBar().popWidget(self.message_bar_item)
                 self.message_bar_item = None
@@ -145,37 +191,6 @@ class SearchForm:
             self.search(uldk_search, False)
     
 
-    def __add_layer(self, name, geom_wkt, epsg = 2180):
-        ewkt = geom_wkt.split(";")
-        if len(ewkt) == 2:
-            epsg = ewkt[0].split("=")[1]
-            geom_wkt = ewkt[1]
-
-        geom = QgsGeometry.fromWkt(geom_wkt)
-        if not geom.isGeosValid():
-            raise InvalidGeomException("Nie udało się przetworzyć geometrii działki")
-        layer = QgsVectorLayer("Polygon?crs=EPSG:" + str(epsg), name, "memory")
-        layer.startEditing()
-        layer.dataProvider().addAttributes([QgsField("pow_mkw", QVariant.String)])
-        feat = QgsFeature()
-        feat.setGeometry(geom)
-        area = geom.area()
-        feat.setAttributes([area])
-        layer.dataProvider().addFeature(feat)
-        layer.commitChanges()
-        QgsProject.instance().addMapLayer(layer)
-        #self.__render_layer(layer)
-        self.iface.zoomToActiveLayer()
-
-    def __render_layer(self, layer):
-
-        r = lambda: random.randint(0,255)
-        myRenderer  = layer.renderer()
-        mySymbol1 = QgsFillSymbol.createSimple({'color':'white', "color_border": '#%02X%02X%02X' % (r(),r(),r()), 'width_border':'2'})
-        myRenderer.setSymbol(mySymbol1)
-        layer.setOpacity(0.35)
-        layer.triggerRepaint()
-        
 
 class SearchTerytForm(SearchForm):
 
@@ -206,7 +221,7 @@ class SearchTerytForm(SearchForm):
         self.button_search.clicked.connect( lambda : self.search(self.lineedit_full_id.text()))
 
     def search(self, teryt):
-        uldk_search = ULDKSearchTeryt("dzialka", ("teryt", "geom_wkt"), teryt)
+        uldk_search = ULDKSearchTeryt("dzialka", ("teryt"), teryt)
         self.parent.search(uldk_search)
         
     def __connect(self):
@@ -235,6 +250,7 @@ class SearchPointForm(Listener):
 
     def __init__(self, parent, button_search, button_get_from_map,  line_edit_x, line_edit_y):
 
+        super().__init__()
 
         self.parent = parent
         self.iface = parent.iface
@@ -270,5 +286,83 @@ class SearchPointForm(Listener):
             x = self.point_crs.point.x()
             y = self.point_crs.point.y()
             srid = self.point_crs.crs.postgisSrid()
-        uldk_search = ULDKSearchPoint("dzialka", ("teryt", "geom_wkt"), x, y, srid)
+        uldk_search = ULDKSearchPoint("dzialka", ("teryt"), x, y, srid)
         self.parent.search(uldk_search)
+
+
+class ResultCollector(Listener):
+
+    def __init__(self, parent, layer_name, layer_epsg):
+        super().__init__()
+        self.parent = parent
+        self.iface = parent.iface
+        self.canvas = parent.canvas
+        self.layer_name = layer_name
+        self.layer_epsg = layer_epsg
+        self.layer = None
+
+    def __create_layer(self):
+        layer = QgsVectorLayer("Polygon?crs=EPSG:" + str(self.layer_epsg), self.layer_name, "memory")
+        layer.willBeDeleted.connect( self.__delete_layer)
+        layer.startEditing()
+        layer.setCustomProperty("ULDK", "plots_layer")
+        layer.dataProvider().addAttributes([
+            QgsField("wojewodztwo", QVariant.String),
+            QgsField("powiat", QVariant.String),
+            QgsField("gmina", QVariant.String),
+            QgsField("obreb", QVariant.String),
+            QgsField("arkusz", QVariant.String),
+            QgsField("nr_dzialki", QVariant.String),
+            QgsField("teryt", QVariant.String),
+            QgsField("pow_m2", QVariant.String),
+        ])
+        layer.commitChanges()
+        self.layer = layer
+
+    def __delete_layer(self):
+        self.layer = None
+
+    def update(self, notifier, result):
+        if self.layer is None:
+            self.__create_layer()
+            QgsProject.instance().addMapLayer(self.layer)
+        self.__add_feature(result)
+        
+
+    def __add_feature(self, result):
+
+        def get_sheet(teryt):
+            split = teryt.split(".")
+            if len(split) == 4:
+                return split[2]
+            else:
+                return None
+
+        geom_wkt, province, county, municipality, precinct, plot_id, teryt = \
+            result.split("|")
+
+        sheet = get_sheet(teryt)
+        
+        ewkt = geom_wkt.split(";")
+        if len(ewkt) == 2:
+            geom_wkt = ewkt[1]
+
+        geometry = QgsGeometry.fromWkt(geom_wkt)
+        area = geometry.area()
+
+        if not geometry.isGeosValid():
+            raise InvalidGeomException("Nie udało się przetworzyć geometrii działki")
+
+        feature = QgsFeature()
+        feature.setGeometry(geometry)
+        feature.setAttributes(
+            [province, county, municipality, precinct, sheet, plot_id, teryt, area]
+            )
+        self.layer.startEditing()
+        self.layer.dataProvider().addFeature(feature)
+        self.layer.commitChanges()
+        self.zoom_to_layer()
+    
+    def zoom_to_layer(self):
+        self.layer.updateExtents()
+        self.canvas.setExtent(self.layer.extent())
