@@ -176,8 +176,6 @@ class SearchForm(Notifier):
             uldk_search = ULDKSearchTeryt("dzialka",
              ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"), result[0])
             result = uldk_search.search()
-            self.combobox_sheet.clear()
-            self.combobox_sheet.setEnabled(False)
             self.notify(result[0])
             if self.message_bar_item:
                 self.iface.messageBar().popWidget(self.message_bar_item)
@@ -187,7 +185,7 @@ class SearchForm(Notifier):
         """Pobiera z Comboboxa arkuszy wybrany teryt i na jego podstawie przekazuje dalej wyszukiwanie działki"""
         teryt = self.combobox_sheet.currentText()
         if teryt:
-            uldk_search = ULDKSearchTeryt("dzialka", ("teryt", "geom_wkt"), teryt)
+            uldk_search = ULDKSearchTeryt("dzialka", ("teryt"), teryt)
             self.search(uldk_search, False)
     
 
