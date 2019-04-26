@@ -96,7 +96,6 @@ class wyszukiwarkaDzialek:
         self.plot_getter.register(self.result_collector)
         self.search_form = None
         self.search_point_form = None
-        self.search_teryt_form = None
         self.project = QgsProject.instance()
         self.wms_layer = None
 
@@ -225,11 +224,8 @@ class wyszukiwarkaDzialek:
         # when closing the docked window:
         self.dockwidget = None
         self.search_form = None
-        self.point_getter = None
         self.search_point_form = None
-        self.search_teryt_form = None
         self.pluginIsActive = False
-        self.canvas.destinationCrsChanged.disconnect()
         self.project.layersRemoved.disconnect()
 
     def unload(self):
@@ -296,17 +292,6 @@ class wyszukiwarkaDzialek:
                 self.dockwidget.lineedit_full_id     
             )
         
-            self.search_point_form = SearchPointForm(
-                self.search_form,
-                self.dockwidget.button_search_by_coords,
-                self.dockwidget.button_get_from_map,
-                self.dockwidget.line_edit_x, 
-                self.dockwidget.line_edit_y 
-            )
-            self.point_getter = PointGetter(self)
-            self.dockwidget.button_get_from_map.clicked.connect( lambda : self.canvas.setMapTool( self.point_getter) )
-            self.point_getter.register(self.search_point_form)
-            self.canvas.destinationCrsChanged.connect(lambda : self.search_point_form.recalculate_xy(self.canvas.mapSettings().destinationCrs()))
             self.dockwidget.button_wms.clicked.connect(lambda : self.addWMS())
             self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
 
