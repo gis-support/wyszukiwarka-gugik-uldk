@@ -25,6 +25,7 @@ repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 # Uncomment the following line and add your changelog:
 changelog=Usunięcie formularza wyszukiwania po punkcie;
     Wyłączenie przybliżania do warstwy działek po pobraniu działki;
+    Przeliczenie współrzędnych do układu 2180 przy wyszukiwaniu przez punkt;
 
 # Tags are comma separated with spaces allowed
 tags=python
