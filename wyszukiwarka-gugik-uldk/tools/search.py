@@ -79,14 +79,26 @@ class PlotGetter(QgsMapToolEmitPoint, Notifier):
 
     def notify(self, point):
         point_crs = PointCRS(point, self.canvas.mapSettings().destinationCrs())
+
+        srid = point_crs.crs.postgisSrid()
+        if srid != 2180:
+            crs_2180 = QgsCoordinateReferenceSystem()
+            crs_2180.createFromSrid(2180)
+            point_crs = PointCRS.transform(point_crs, crs_2180)
+            srid = 2180
+
         x = point_crs.point.x()
         y = point_crs.point.y()
-        srid = point_crs.crs.postgisSrid()
         uldk_search = ULDKSearchPoint(
             "dzialka",
             ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"),
             x,y, srid)
-        result = uldk_search.search()[0]
+        try:
+            result = uldk_search.search()[0]
+        except RequestException as e:
+            self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Nie znaleziono działki - odpowiedź serwera: '{}'".format(e))
+            return
+
         super().notify(self, result)
     
     def toggle(self, enabled):
@@ -118,16 +130,13 @@ class ChainedCombobox:
 
     def fill_next(self):
         if self.next_chained and self.c.currentText():
-            try:
-                self.__fill_combobox(
-                    self.next_chained,
-                        SearchTerytForm.get_administratives(
-                            self.next_chained.level,
-                            self.c.currentText().split(" | ")[1]
-                        )
-                )
-            except RequestException as e:
-                self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Błąd pobierania listy jednostek - odpowiedź serwera: '{}'".format(e))
+            self.__fill_combobox(
+                self.next_chained,
+                    SearchTerytForm.get_administratives(
+                        self.next_chained.level,
+                        self.c.currentText().split(" | ")[1]
+                    )
+            )
 
     def __fill_combobox(self, target, items):
         items = [""] + items
@@ -162,7 +171,6 @@ class SearchForm(Notifier):
         try:
             result = uldk_search.search()
         except RequestException as e:
-            
             self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Nie znaleziono działki - odpowiedź serwera: '{}'".format(e))
             return
 
