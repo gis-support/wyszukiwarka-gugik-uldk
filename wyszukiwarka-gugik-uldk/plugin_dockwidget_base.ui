@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>520</width>
-    <height>836</height>
+    <height>662</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -201,69 +201,40 @@
          </property>
         </widget>
        </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLabel" name="label_search_by_coords">
-      <property name="text">
-       <string>Lub współrzędne</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QFrame" name="frame_search_by_coords">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
         <layout class="QFormLayout" name="formLayout_2">
          <item row="0" column="0">
-          <widget class="QLabel" name="label_10">
+          <widget class="QLabel" name="label_sheet">
            <property name="text">
-            <string>X</string>
+            <string>Arkusz:</string>
            </property>
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QLineEdit" name="line_edit_x"/>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_11">
+          <widget class="QLabel" name="label_info_sheet">
+           <property name="maximumSize">
+            <size>
+             <width>15</width>
+             <height>15</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Możesz ręcznie wpisać kod TERYT działki</string>
+           </property>
            <property name="text">
-            <string>Y</string>
+            <string>i</string>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
            </property>
           </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="line_edit_y"/>
          </item>
         </layout>
        </item>
        <item>
-        <widget class="QPushButton" name="button_get_from_map">
-         <property name="maximumSize">
-          <size>
-           <width>115</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Pobierz z mapy</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="button_search_by_coords">
+        <widget class="QComboBox" name="combobox_sheet">
          <property name="enabled">
           <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Szukaj</string>
          </property>
         </widget>
        </item>
@@ -285,51 +256,6 @@
        </size>
       </property>
      </spacer>
-    </item>
-    <item>
-     <widget class="QFrame" name="frame_2">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QFormLayout" name="formLayout_3">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_sheet">
-         <property name="text">
-          <string>Arkusz:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_info_sheet">
-         <property name="maximumSize">
-          <size>
-           <width>15</width>
-           <height>15</height>
-          </size>
-         </property>
-         <property name="toolTip">
-          <string>Możesz ręcznie wpisać kod TERYT działki</string>
-         </property>
-         <property name="text">
-          <string>i</string>
-         </property>
-         <property name="scaledContents">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QComboBox" name="combobox_sheet">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
     </item>
     <item>
      <spacer name="verticalSpacer_3">

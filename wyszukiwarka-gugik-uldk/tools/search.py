@@ -170,16 +170,18 @@ class SearchForm(Notifier):
             self.combobox_sheet.setEnabled(True)
             self.combobox_sheet.clear()
             self.combobox_sheet.addItems( result )
-            self.message_bar_item = QgsMessageBarItem("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach map. Wybierz z listy jedną z nich.", duration = 10)
+            self.message_bar_item = QgsMessageBarItem("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach map. Wybierz z listy jedną z nich.")
             self.iface.messageBar().pushWidget(self.message_bar_item)
         else:
             uldk_search = ULDKSearchTeryt("dzialka",
              ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"), result[0])
             result = uldk_search.search()
-            self.notify(result[0])
+
             if self.message_bar_item:
                 self.iface.messageBar().popWidget(self.message_bar_item)
                 self.message_bar_item = None
+            
+            self.notify(result[0])
 
     def __search_from_sheet(self):
         """Pobiera z Comboboxa arkuszy wybrany teryt i na jego podstawie przekazuje dalej wyszukiwanie działki"""
@@ -328,7 +330,7 @@ class ResultCollector(Listener):
         
 
     def __add_feature(self, result):
-
+        
         def get_sheet(teryt):
             split = teryt.split(".")
             if len(split) == 4:
@@ -359,8 +361,6 @@ class ResultCollector(Listener):
         self.layer.startEditing()
         self.layer.dataProvider().addFeature(feature)
         self.layer.commitChanges()
-        self.zoom_to_layer()
-    
-    def zoom_to_layer(self):
         self.layer.updateExtents()
-        self.canvas.setExtent(self.layer.extent())
+        self.iface.messageBar().pushSuccess("Wtyczka ULDK", "Zaaktualizowano warstwę '{}'".format(self.layer_name))
+
