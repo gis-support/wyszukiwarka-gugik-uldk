@@ -334,7 +334,9 @@ class ResultCollector(Listener):
         if self.layer is None:
             self.__create_layer()
             QgsProject.instance().addMapLayer(self.layer)
-        self.__add_feature(result)
+        added_feature = self.__add_feature(result)
+        if isinstance(notifier, SearchForm):
+            self.canvas.setExtent(added_feature.geometry().boundingBox())
         
 
     def __add_feature(self, result):
@@ -371,4 +373,6 @@ class ResultCollector(Listener):
         self.layer.commitChanges()
         self.layer.updateExtents()
         self.iface.messageBar().pushSuccess("Wtyczka ULDK", "Zaaktualizowano warstwę '{}'".format(self.layer_name))
+        return feature
+
 
