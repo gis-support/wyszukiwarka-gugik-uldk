@@ -1,6 +1,8 @@
 from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import urlopen
 
+from ..lib.ratelimit import RateLimitException, limits, sleep_and_retry
 from .exceptions import *
 
 
@@ -30,23 +32,25 @@ class URL:
         for key,value in self.params.items():
             if isinstance(value, (tuple, list)):
                 value = ",".join(value)
-            url += "{}={}&".format(key, value)
+            url += "{}={}&".format(key, quote(value))
 
         return url
-
 
 class ULDKSearch:
 
     url = r"http://uldk.gugik.gov.pl/service.php"
 
-    def __init__(self, target, results):
-
+    def __init__(self, target, results, method = ""):
         self.url = URL(ULDKSearch.url, obiekt=target, wynik=results)
+        if method:
+            self.url.add_param("request", method)
 
+    @sleep_and_retry
+    @limits(calls = 5, period = 3)
     def search(self):
         url = str(self.url)
         try:
-            with urlopen(url) as u:
+            with urlopen(url, timeout=15) as u:
                 content = u.read()
             content = content.decode()
             content_lines = content.split("\n")
@@ -57,18 +61,17 @@ class ULDKSearch:
             raise e
         return content_lines[1:-1]
 
-
 class ULDKSearchTeryt(ULDKSearch):
-
     def __init__(self, target, results, teryt):
-
         super().__init__(target, results)
         self.url.add_param("teryt", teryt)
 
+class ULDKSearchParcel(ULDKSearch):
+    def __init__(self, target, results, teryt):
+        super().__init__(target, results, "GetParcelById")
+        self.url.add_param("id", teryt)
 
 class ULDKSearchPoint(ULDKSearch):
-
     def __init__(self, target, results, x, y, srid=2180):
-
-        super().__init__(target, results)
-        self.url.add_param("punkt_xy", (x,y,srid))
+        super().__init__(target, results, "GetParcelByXY")
+        self.url.add_param("xy", (x,y,srid))
