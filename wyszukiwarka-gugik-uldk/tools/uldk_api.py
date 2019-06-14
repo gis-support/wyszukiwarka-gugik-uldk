@@ -63,11 +63,6 @@ class ULDKSearch:
 
 class ULDKSearchTeryt(ULDKSearch):
     def __init__(self, target, results, teryt):
-        super().__init__(target, results)
-        self.url.add_param("teryt", teryt)
-
-class ULDKSearchParcel(ULDKSearch):
-    def __init__(self, target, results, teryt):
         super().__init__(target, results, "GetParcelById")
         self.url.add_param("id", teryt)
 
