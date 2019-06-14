@@ -317,6 +317,10 @@ class wyszukiwarkaDzialek:
                                         "będziesz mógł korzystać z pozostałych funkcjonalności wtyczki,\n"
                                         "ale mogą one działać wolniej. Wyszukiwanie obiektów działa również\n"
                                         "po zamknięciu wtyczki."))
+            self.dockwidget.label_info_import_csv_column.setPixmap(QPixmap(':/plugins/plugin/info.png'))
+            self.dockwidget.label_info_import_csv_column.setToolTip((
+                                        "Kolumna zawierająca kody TERYT działek, \n"
+                                        "przykład poprawnego kodu: 141201_1.0001.1867/2"))
 
 
             self.dockwidget.button_wms.clicked.connect(lambda : self.addWMS())
