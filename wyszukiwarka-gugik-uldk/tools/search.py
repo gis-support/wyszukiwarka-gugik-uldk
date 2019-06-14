@@ -426,7 +426,7 @@ class ImportCSVForm(SearchForm):
             if features:
                 result_collector.add_features(features)
             self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
-                                        "Import CSV: zakończono wyszukiwanie."))
+                                        "Import CSV: zakończono wyszukiwanie"))
             cleanup()
 
         def interrupted():
