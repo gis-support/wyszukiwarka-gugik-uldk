@@ -37,3 +37,5 @@ experimental=False
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
 
+external_libs=https://github.com/tomasbasham/ratelimit
+
