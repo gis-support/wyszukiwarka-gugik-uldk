@@ -1,6 +1,8 @@
 from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import urlopen
 
+from ..lib.ratelimit import RateLimitException, limits, sleep_and_retry
 from .exceptions import *
 
 
@@ -30,7 +32,7 @@ class URL:
         for key,value in self.params.items():
             if isinstance(value, (tuple, list)):
                 value = ",".join(value)
-            url += "{}={}&".format(key, value)
+            url += "{}={}&".format(key, quote(value))
 
         return url
 
@@ -43,10 +45,12 @@ class ULDKSearch:
         if method:
             self.url.add_param("request", method)
 
+    @sleep_and_retry
+    @limits(calls = 5, period = 3)
     def search(self):
         url = str(self.url)
         try:
-            with urlopen(url) as u:
+            with urlopen(url, timeout=15) as u:
                 content = u.read()
             content = content.decode()
             content_lines = content.split("\n")
