@@ -5,7 +5,7 @@ import threading
 import time
 from urllib.request import urlopen
 
-from PyQt5.QtCore import QObject, QThread, QVariant, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, QVariant, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform,
                        QgsCoordinateTransformContext, QgsFeature, QgsField,
@@ -493,10 +493,10 @@ class ImportCSVForm(SearchForm):
         table.setColumnCount(2)
         table.setHorizontalHeaderLabels(("TERYT", "Treść błędu"))
         header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         teryt_column_size = table.width()/3
-        header.resizeSection(0, teryt_column_size)
+        header.resizeSection(0, 200)
 
 
 class ResultCollector(Listener):

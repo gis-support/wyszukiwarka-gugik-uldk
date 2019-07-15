@@ -33,7 +33,7 @@ from urllib.request import urlopen
 from PyQt5.QtCore import (QCoreApplication, QSettings, Qt, QTranslator,
                           QVariant, qVersion)
 from PyQt5.QtGui import *
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QShortcut
 from qgis.core import *
 from qgis.gui import QgsMessageBar
 
@@ -280,6 +280,10 @@ class wyszukiwarkaDzialek:
                     self.dockwidget.lineedit_teryt,
                     self.dockwidget.lineedit_full_id     
                 )
+                self.teryt_search_form.button_search.setShortcut(QKeySequence(Qt.Key_Return))
+                enter_pressed = QShortcut(QKeySequence(Qt.Key_Enter), self.dockwidget)
+                enter_pressed.activated.connect(self.teryt_search_form.button_search.animateClick)
+
             if self.import_csv_form is None:
                 self.import_csv_form = ImportCSVForm(
                     self.search_form,
