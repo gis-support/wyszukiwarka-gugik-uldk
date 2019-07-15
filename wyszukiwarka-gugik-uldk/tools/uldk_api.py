@@ -1,4 +1,4 @@
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import urlopen
 
@@ -59,9 +59,16 @@ class ULDKSearch:
                 raise RequestException(status)
         except HTTPError as e:
             raise e
+        except URLError:
+            raise RequestException("Brak odpowiedzi")
         return content_lines[1:-1]
 
 class ULDKSearchTeryt(ULDKSearch):
+    def __init__(self, target, results, teryt):
+        super().__init__(target, results)
+        self.url.add_param("teryt", teryt)
+
+class ULDKSearchParcel(ULDKSearch):
     def __init__(self, target, results, teryt):
         super().__init__(target, results, "GetParcelById")
         self.url.add_param("id", teryt)

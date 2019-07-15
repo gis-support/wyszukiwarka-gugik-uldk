@@ -5,7 +5,7 @@ import threading
 import time
 from urllib.request import urlopen
 
-from PyQt5.QtCore import QObject, QThread, QVariant, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, QVariant, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform,
                        QgsCoordinateTransformContext, QgsFeature, QgsField,
@@ -14,7 +14,7 @@ from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform,
 from qgis.gui import QgsMapToolEmitPoint, QgsMessageBarItem
 
 from .exceptions import RequestException
-from .uldk_api import ULDKSearchPoint, ULDKSearchTeryt
+from .uldk_api import ULDKSearchPoint, ULDKSearchTeryt, ULDKSearchParcel
 
 PLOTS_LAYER_DEFAULT_FIELDS = [
     QgsField("wojewodztwo", QVariant.String),
@@ -207,7 +207,7 @@ class SearchForm(Notifier):
             self.message_bar_item = QgsMessageBarItem("Wtyczka ULDK", "Wybrana działka znajduje się na różnych arkuszach map. Wybierz z listy jedną z nich.")
             self.iface.messageBar().pushWidget(self.message_bar_item)
         else:
-            uldk_search = ULDKSearchTeryt("dzialka",
+            uldk_search = ULDKSearchParcel("dzialka",
              ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"), result[0])
             result = uldk_search.search()
 
@@ -221,7 +221,7 @@ class SearchForm(Notifier):
         """Pobiera z Comboboxa arkuszy wybrany teryt i na jego podstawie przekazuje dalej wyszukiwanie działki"""
         teryt = self.combobox_sheet.currentText()
         if teryt:
-            uldk_search = ULDKSearchTeryt("dzialka", ("teryt"), teryt)
+            uldk_search = ULDKSearchParcel("dzialka", ("teryt"), teryt)
             self.search(uldk_search, False)
     
 
@@ -256,7 +256,7 @@ class SearchTerytForm(SearchForm):
             self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Błąd pobierania listy jednostek - odpowiedź serwera: '{}'".format(e))
 
     def search(self, teryt):
-        uldk_search = ULDKSearchTeryt("dzialka", ("teryt"), teryt)
+        uldk_search = ULDKSearchParcel("dzialka", ("teryt"), teryt)
         self.parent.search(uldk_search)
         
     def __connect(self):
@@ -345,7 +345,7 @@ class Worker(QObject):
                 self.interrupted.emit()
                 return
 
-            uldk_search = ULDKSearchTeryt("dzialka",
+            uldk_search = ULDKSearchParcel("dzialka",
                 ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"), teryt)
             try:
                 result = uldk_search.search()[0]
@@ -493,10 +493,10 @@ class ImportCSVForm(SearchForm):
         table.setColumnCount(2)
         table.setHorizontalHeaderLabels(("TERYT", "Treść błędu"))
         header = table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         teryt_column_size = table.width()/3
-        header.resizeSection(0, teryt_column_size)
+        header.resizeSection(0, 200)
 
 
 class ResultCollector(Listener):
