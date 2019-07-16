@@ -41,7 +41,7 @@ from .plugin_dockwidget import wyszukiwarkaDzialekDockWidget
 from .resources.resources import *
 from .tools.exceptions import *
 from .tools.search import (ImportCSVForm, PlotGetter, PointGetter,
-                           ResultCollector, SearchForm, SearchPointForm,
+                           ResultCollector, SearchForm,
                            SearchTerytForm, make_plots_layer)
 from .tools.uldk_api import ULDKSearchPoint, ULDKSearchTeryt
 
@@ -78,9 +78,9 @@ class wyszukiwarkaDzialek:
                 QCoreApplication.installTranslator(self.translator)
 
         self.toolbar_buttons = {}
-        self.menu = self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
-        self.toolbar = self.iface.addToolBar(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
-        self.toolbar.setObjectName(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta')
+        self.menu = self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)')
+        self.toolbar = self.iface.addToolBar(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)')
+        self.toolbar.setObjectName(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)')
 
 
         self.pluginIsActive = False
@@ -195,7 +195,7 @@ class wyszukiwarkaDzialek:
         self.add_action(
             "main",
             os.path.join(base_directory, "logo_thumb.png"),
-            text=self.tr(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta'),
+            text=self.tr(u'Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)'),
             callback=self.run,
             parent=self.iface.mainWindow())
         
@@ -235,7 +235,7 @@ class wyszukiwarkaDzialek:
 
         for action in self.toolbar_buttons.values():
             self.iface.removePluginMenu(
-                self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK) - beta'),
+                self.tr(u'&Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)'),
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar

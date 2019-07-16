@@ -281,7 +281,7 @@ class SearchTerytForm(SearchForm):
         return len(plot_id.split(".")) >=3
 
 
-class SearchPointForm(Listener):
+class SearchPointForm(Listener): #obecnie nieużywana
 
     def __init__(self, parent, button_search, button_get_from_map,  line_edit_x, line_edit_y):
 
@@ -558,7 +558,12 @@ class ResultCollector(Listener):
         self.layer.updateExtents()
         self.iface.messageBar().pushSuccess("Wtyczka ULDK", "Zaaktualizowano warstwę '{}'".format(self.layer.sourceName()))
         if isinstance(notifier, SearchForm):
-            self.canvas.setExtent(added_feature.geometry().boundingBox())
+            crs_2180 = QgsCoordinateReferenceSystem()
+            crs_2180.createFromSrid(2180)
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            transformation = QgsCoordinateTransform(crs_2180, canvas_crs, QgsCoordinateTransformContext())
+            target_bbox = transformation.transformBoundingBox(added_feature.geometry().boundingBox())
+            self.canvas.setExtent(target_bbox)
 
     def __add_feature(self, feature):
         
