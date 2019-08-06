@@ -17,6 +17,7 @@ from qgis.gui import QgsMessageBar
 from .modules.csv_import.main import CSVImport
 from .modules.map_point_search.main import MapPointSearch
 from .modules.teryt_search.main import TerytSearch
+from .modules.point_layer_import.main import PointLayerImport
 from .plugin_dockwidget import wyszukiwarkaDzialekDockWidget
 from .resources import resources
 from .tools import uldk_api
@@ -64,6 +65,7 @@ class Plugin:
         self.wms_layer = None
         self.module_csv_import = None
         self.module_teryt_search = None
+        self.module_point_layer_import = None
         self.module_map_point_search = MapPointSearch(self, uldk_api, self.teryt_search_result_collector)
 
     def tr(self, message):
@@ -168,6 +170,16 @@ class Plugin:
                     uldk_api, 
                     result_collector_factory,
                     ResultCollectorMultiple.default_layer_factory)
+
+            if self.module_point_layer_import is None:
+                result_collector_factory = lambda parent, target_layer: ResultCollectorMultiple(self, target_layer)
+                self.module_point_layer_import = PointLayerImport(
+                    self,
+                    self.dockwidget.tab_import_layer_point_layout,
+                    uldk_api,
+                    result_collector_factory,
+                    ResultCollectorMultiple.default_layer_factory
+                )
 
         self.dockwidget.button_wms.clicked.connect(lambda : self.addWMS())
         self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
