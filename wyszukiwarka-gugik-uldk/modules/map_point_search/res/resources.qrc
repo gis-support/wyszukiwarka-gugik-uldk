@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/map_point_search" >
+        <file>intersect.png</file>
+    </qresource>
+</RCC>
