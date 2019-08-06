@@ -160,7 +160,7 @@
       <bool>false</bool>
      </property>
      <property name="text">
-      <string>Szukaj</string>
+      <string>Szukaj w ULDK</string>
      </property>
     </widget>
    </item>
