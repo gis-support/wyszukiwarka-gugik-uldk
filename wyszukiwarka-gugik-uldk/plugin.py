@@ -66,6 +66,7 @@ class Plugin:
         self.module_csv_import = None
         self.module_teryt_search = None
         self.module_point_layer_import = None
+        self.module_wms_initialized = False
         self.module_map_point_search = MapPointSearch(self, uldk_api, self.teryt_search_result_collector)
 
     def tr(self, message):
@@ -129,7 +130,7 @@ class Plugin:
             checkable = True
         )    
         self.module_map_point_search.deactivated.connect(lambda: action_map_point_search.setChecked(False))
-
+        
     def onClosePlugin(self):
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
         self.pluginIsActive = False
@@ -178,11 +179,13 @@ class Plugin:
                     self.dockwidget.tab_import_layer_point_layout,
                     uldk_api,
                     result_collector_factory,
-                    ResultCollectorMultiple.default_layer_factory
-                )
+                    ResultCollectorMultiple.default_layer_factory)
 
-        self.dockwidget.button_wms.clicked.connect(lambda : self.addWMS())
-        self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
+            if not self.module_wms_initialized:
+                self.dockwidget.button_wms.clicked.connect(self.addWMS)
+                self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
+                self.module_wms_initialized = True
+        
     def addWMS(self):
 
         url = ("contextualWMSLegend=0&"
