@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>370</width>
+    <width>594</width>
     <height>808</height>
    </rect>
   </property>
@@ -14,7 +14,7 @@
    <string>Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
+   <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
      <widget class="QLabel" name="label_uldk_info">
       <property name="text">
@@ -133,29 +133,6 @@
      </spacer>
     </item>
     <item>
-     <widget class="QPushButton" name="button_wms">
-      <property name="text">
-       <string>Dodaj WMS do mapy</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <spacer name="verticalSpacer_4">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeType">
-       <enum>QSizePolicy::Minimum</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>15</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
      <widget class="QFrame" name="frame">
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
@@ -163,7 +140,7 @@
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_4">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
         <widget class="QLabel" name="label_2">
          <property name="text">
@@ -182,42 +159,64 @@
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_5">
-         <property name="leftMargin">
-          <number>9</number>
+        <widget class="QFrame" name="frame_2">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
          </property>
-         <property name="topMargin">
-          <number>9</number>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
          </property>
-         <property name="rightMargin">
-          <number>9</number>
-         </property>
-         <property name="bottomMargin">
-          <number>9</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>50</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;WMS - Krajowa Integracja Ewidencji Gruntów &lt;a href=&quot;https://gis-support.pl/aktualne-dane-ewidencyjne-z-ponad-300-powiatow-w-jednej-usludze-wms-tak-w-polsce/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;dowiedz się więcej&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="textFormat">
-            <enum>Qt::RichText</enum>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-           <property name="openExternalLinks">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Krajowa Integracja Ewidencji Gruntów (GUGiK KIEG)</string>
+            </property>
+            <property name="indent">
+             <number>3</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="button_wms_kieg">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Dodaj WMS KIEG do mapy</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://gis-support.pl/aktualne-dane-ewidencyjne-z-ponad-300-powiatow-w-jednej-usludze-wms-tak-w-polsce/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Dowiedz się więcej&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="textFormat">
+             <enum>Qt::RichText</enum>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="indent">
+             <number>3</number>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
       </layout>
      </widget>

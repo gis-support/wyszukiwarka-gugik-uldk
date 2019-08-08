@@ -66,7 +66,7 @@ class Plugin:
         self.module_csv_import = None
         self.module_teryt_search = None
         self.module_point_layer_import = None
-        self.module_wms_initialized = False
+        self.module_wms_kieg_initialized = False
         self.module_map_point_search = MapPointSearch(self, uldk_api, self.teryt_search_result_collector)
 
     def tr(self, message):
@@ -184,12 +184,12 @@ class Plugin:
                     result_collector_factory,
                     ResultCollectorMultiple.default_layer_factory)
 
-            if not self.module_wms_initialized:
-                self.dockwidget.button_wms.clicked.connect(self.addWMS)
-                self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_layer", layers) else lambda : None)
-                self.module_wms_initialized = True
+            if not self.module_wms_kieg_initialized:
+                self.dockwidget.button_wms_kieg.clicked.connect(self.add_wms_kieg)
+                self.project.layersRemoved.connect( lambda layers : self.dockwidget.button_wms_kieg.setEnabled(True) if filter(lambda layer: layer.customProperty("ULDK") == "wms_kieg_layer", layers) else lambda : None)
+                self.module_wms_kieg_initialized = True
         
-    def addWMS(self):
+    def add_wms_kieg(self):
 
         url = ("contextualWMSLegend=0&"
                 "crs=EPSG:2180&"
@@ -201,7 +201,7 @@ class Plugin:
                 "version=1.1.1&"
                 "url=http://integracja.gugik.gov.pl/cgi-bin/KrajowaIntegracjaEwidencjiGruntow")
         layer = QgsRasterLayer(url, 'Działki ULDK', 'wms')
-        layer.setCustomProperty("ULDK", "wms_layer")
-        self.wms_layer = layer
-        self.project.addMapLayer(self.wms_layer)
-        self.dockwidget.button_wms.setEnabled(False)
+        layer.setCustomProperty("ULDK", "wms_kieg_layer")
+        self.wms_kieg_layer = layer
+        self.project.addMapLayer(self.wms_kieg_layer)
+        self.dockwidget.button_wms_kieg.setEnabled(False)
