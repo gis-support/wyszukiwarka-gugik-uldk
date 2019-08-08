@@ -114,18 +114,23 @@ class CSVImport:
         header.resizeSection(0, 200)
 
     def __on_file_changed(self, path):
-        if path:
+        suggested_target_layer_name = ""
+        if os.path.exists(path):
             self.ui.button_start.setEnabled(True)
-        self.file_path = path
-        self.__fill_column_select()
-        self.ui.text_edit_layer_name.setText(os.path.splitext(os.path.relpath(path))[0])
+            self.file_path = path
+            self.__fill_column_select()
+            suggested_target_layer_name = os.path.splitext(os.path.relpath(path))[0]
+        else:
+            self.file_path = None
+            self.ui.combobox_teryt_column.clear()
+        self.ui.text_edit_layer_name.setText(suggested_target_layer_name)
 
 
     def __fill_column_select(self):
+        self.ui.combobox_teryt_column.clear()
         with open(self.file_path) as f:
             csv_read = csv.DictReader(f)
             columns = csv_read.fieldnames
-        self.ui.combobox_teryt_column.clear()
         self.ui.combobox_teryt_column.addItems(columns)
     
     def __handle_found(self, uldk_response_rows):
