@@ -165,7 +165,7 @@ class CSVImport:
                 form = "obiekty"
 
         self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
-            f"Import CSV: zakończono wyszukiwanie. Zapisano {found_count} {form} do warstwy {self.ui.text_edit_layer_name.text()} "))
+            f"Import CSV: zakończono wyszukiwanie. Zapisano {found_count} {form} do warstwy <b>{self.ui.text_edit_layer_name.text()}</b>"))
         self.__cleanup_after_search()
 
     def __handle_interrupted(self):

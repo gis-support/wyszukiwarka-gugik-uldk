@@ -105,6 +105,7 @@ class PointLayerImport:
         self.ui.button_start.clicked.connect(self.search)
         self.ui.button_cancel.clicked.connect(self.__stop)
         self.__on_layer_changed(self.ui.layer_select.currentLayer())
+        self.ui.layer_select.layerChanged.connect(self.__on_layer_changed)
         self.ui.label_status.setText("")
         self.ui.label_found_count.setText("")
         self.ui.label_not_found_count.setText("")
@@ -148,7 +149,7 @@ class PointLayerImport:
                 form = "obiekty"
 
         self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
-            f"Import CSV: zakończono wyszukiwanie. Zapisano {found_count} {form} do warstwy {self.ui.text_edit_target_layer_name.text()} "))
+            f"Import warstwy: zakończono wyszukiwanie. Zapisano {found_count} {form} do warstwy <b>{self.ui.text_edit_target_layer_name.text()}</b>"))
         self.__cleanup_after_search()
 
     def __handle_interrupted(self):

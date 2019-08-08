@@ -210,7 +210,7 @@ class TerytSearch:
     def __handle_finished_precinct_unknown(self):
         self.result_collector_precinct_unknown.update(self.plots_found)
         self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
-            f"Wyszukiwanie dzialek: zapisano znalezione działki do warstwy {self.result_collector_precinct_unknown.layer.sourceName()} "))
+            f"Wyszukiwanie działek: zapisano znalezione działki do warstwy <b>{self.result_collector_precinct_unknown.layer.sourceName()}</b>"))
         self.ui.button_search.show()
         self.ui.progress_bar_precinct_unknown.hide()
 
@@ -240,7 +240,7 @@ class TerytSearch:
                                             .format(self.result_collector.layer.sourceName()))
     
     def __handle_not_found(self, teryt, exception):
-        self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Nie znaleziono działki - odpowiedź serwera: '{}'".format(exception))
+        self.parent.iface.messageBar().pushCritical("Wtyczka ULDK", f"Nie znaleziono działki - odpowiedź serwera: '{str(exception)}'")
 
     def __handle_found_precinct_unknown(self, uldk_response_rows):
         self.plots_found += uldk_response_rows
