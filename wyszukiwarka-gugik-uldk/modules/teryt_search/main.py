@@ -29,11 +29,15 @@ class UI(QtWidgets.QFrame, FORM_CLASS):
         self.label_info_sheet.setToolTip(("W bazie danych może istnieć kilka działek o takim samym kodzie TERYT,\n"
             "każda na innym arkuszu.\n"
             "W takiej sytuacji możesz wybrać z tej listy działkę której szukasz."))
+        self.label_info_precinct_unknown.setPixmap(QPixmap(self.icon_info_path))
+        self.label_info_precinct_unknown.setToolTip(("Wyszukanie zostaną działki na terenie całej gminy, co może być czasochłonne."))
+        self.progress_bar_precinct_unknown.hide()
         target_layout.layout().addWidget(self)
-    
+
 class TerytSearch:
 
-    def __init__(self, parent, target_layout, uldk_api, result_collector):
+    def __init__(self, parent, target_layout, uldk_api, result_collector,
+                 result_collector_precinct_unknown_factory, layer_factory):
         self.parent = parent
         self.iface = parent.iface
         self.canvas = self.iface.mapCanvas()
@@ -41,23 +45,41 @@ class TerytSearch:
 
         self.uldk_api = uldk_api
         self.result_collector = result_collector
+        self.result_collector_precinct_unknown_factory = result_collector_precinct_unknown_factory
+        self.layer_factory = layer_factory
 
         self.message_bar_item = None
         self.__init_ui()
 
         self.uldk_search = uldk_api.ULDKSearchParcel("dzialka",
              ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"))
-        
+
     def search(self, teryt):
+        if self.ui.checkbox_precinct_unknown.checkState():
+            self.__search_without_precinct()
+        else:
+            teryt = self.ui.lineedit_full_teryt.text()
+            self.__search([teryt])
+
+    def __search(self, teryts):
         self.ui.button_search.setEnabled(False)
         self.ui.button_search.setText("Wyszukiwanie...")
 
-        self.uldk_search_worker = self.uldk_api.ULDKSearchWorker(self.uldk_search, [teryt])
+        self.uldk_search_worker = self.uldk_api.ULDKSearchWorker(self.uldk_search, teryts)
         self.thread = QThread()
         self.uldk_search_worker.moveToThread(self.thread)
         
-        self.uldk_search_worker.found.connect(self.__handle_found)
-        self.uldk_search_worker.not_found.connect(self.__handle_not_found)
+        
+        if self.ui.checkbox_precinct_unknown.checkState():
+            self.uldk_search_worker.finished.connect(self.__handle_finished_precinct_unknown)
+            self.uldk_search_worker.found.connect(self.__handle_found_precinct_unknown)
+            self.uldk_search_worker.found.connect(self.__handle_progress_precinct_unknown)
+            self.uldk_search_worker.not_found.connect(self.__handle_progress_precinct_unknown)
+        else:
+            self.uldk_search_worker.finished.connect(self.__handle_finished)
+            self.uldk_search_worker.found.connect(self.__handle_found)
+            self.uldk_search_worker.not_found.connect(self.__handle_not_found)
+
         self.uldk_search_worker.finished.connect(self.__handle_finished)
         self.uldk_search_worker.finished.connect(self.thread.quit)
 
@@ -66,6 +88,26 @@ class TerytSearch:
 
         self.thread.started.connect(self.uldk_search_worker.search)
         self.thread.start()
+
+    def __search_without_precinct(self):
+        self.precincts_progressed = 0
+        self.plots_found = []
+        combobox = self.ui.combobox_precinct
+        plot_id = self.ui.lineedit_plot_id.text()
+        municipality_name = self.ui.combobox_municipality.currentText().split(" | ")[0]
+        plots_teryts = []
+        for i in range(1, combobox.count()):
+            municipality_teryt = combobox.itemText(i).split(" | ")[1]
+            plot_teryt = f"{municipality_teryt}.{plot_id}"
+            plots_teryts.append(plot_teryt)
+
+        layer_name = f"{municipality_name} - Działki '{plot_id}''"
+        layer = self.layer_factory(
+            name = layer_name, custom_properties = {"ULDK": layer_name})
+        self.result_collector_precinct_unknown = self.result_collector_precinct_unknown_factory(self.parent, layer)
+        self.ui.button_search.hide()
+        self.ui.progress_bar_precinct_unknown.show()
+        self.__search(plots_teryts)
 
     def is_plot_id_valid(cls, plot_id):
 
@@ -108,10 +150,19 @@ class TerytSearch:
 
     def fill_lineedit_full_teryt(self):
         current_plot_id = self.ui.lineedit_plot_id.text()
+        current_municipality = self.ui.combobox_municipality.currentText()
         current_precinct = self.ui.combobox_precinct.currentText()
-        if current_plot_id and current_precinct:
+        if self.ui.checkbox_precinct_unknown.checkState() and current_municipality:
+            current_municipality = current_municipality.split(" | ")[1]
+            current_precinct_dummy = f"{current_municipality}.?"
+            self.ui.lineedit_full_teryt.setText(f"{current_precinct_dummy}.{current_plot_id}")
+
+        elif current_plot_id and current_precinct:
             current_precinct = current_precinct.split(" | ")[1]
             self.ui.lineedit_full_teryt.setText(f"{current_precinct}.{current_plot_id}")
+        else:
+            self.ui.lineedit_full_teryt.setText("")
+
 
     def __init_ui(self):
         
@@ -143,8 +194,8 @@ class TerytSearch:
         )
         self.ui.button_search.setShortcut(QKeySequence(Qt.Key_Return))
         self.ui.combobox_sheet.activated.connect(self.__search_from_sheet)
-        self.ui.button_search.clicked.connect(lambda: self.search(self.ui.lineedit_full_teryt.text()))
-
+        self.ui.button_search.clicked.connect(self.search)
+        self.ui.checkbox_precinct_unknown.stateChanged.connect(self.__on_checkbox_precinct_unknown_switched)
         self.fill_combobox_province()
 
     def __search_from_sheet(self):
@@ -155,6 +206,13 @@ class TerytSearch:
         self.ui.button_search.setEnabled(True)
         self.ui.button_search.setText("Szukaj")
         self.ui.button_search.setShortcut(QKeySequence(Qt.Key_Return))
+
+    def __handle_finished_precinct_unknown(self):
+        self.result_collector_precinct_unknown.update(self.plots_found)
+        self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
+            f"Wyszukiwanie dzialek: zapisano znalezione działki do warstwy {self.result_collector_precinct_unknown.layer.sourceName()} "))
+        self.ui.button_search.show()
+        self.ui.progress_bar_precinct_unknown.hide()
 
     def __handle_found(self, uldk_response_rows):
         if len(uldk_response_rows) > 1:
@@ -184,5 +242,16 @@ class TerytSearch:
     def __handle_not_found(self, teryt, exception):
         self.parent.iface.messageBar().pushCritical("Wtyczka ULDK","Nie znaleziono działki - odpowiedź serwera: '{}'".format(exception))
 
+    def __handle_found_precinct_unknown(self, uldk_response_rows):
+        self.plots_found += uldk_response_rows
 
+    def __handle_progress_precinct_unknown(self):
+        self.precincts_progressed += 1
+        precincts_count = self.ui.combobox_precinct.count()
+        self.ui.progress_bar_precinct_unknown.setValue(self.precincts_progressed/precincts_count*100)
+
+    def __on_checkbox_precinct_unknown_switched(self, new_state):
+        self.fill_lineedit_full_teryt()
+        self.ui.label_precinct.setEnabled(not new_state)
+        self.ui.combobox_precinct.setEnabled(not new_state)
 

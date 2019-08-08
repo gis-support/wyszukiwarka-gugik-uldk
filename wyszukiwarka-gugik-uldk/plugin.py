@@ -159,10 +159,13 @@ class Plugin:
             self.dockwidget.show()
 
             if self.module_teryt_search is None:
+                result_collector_factory = lambda parent, target_layer: ResultCollectorMultiple(self, target_layer)
                 self.module_teryt_search = TerytSearch(self,
                     self.dockwidget.tab_teryt_search_layout,
                     uldk_api, 
-                    self.teryt_search_result_collector)
+                    self.teryt_search_result_collector,
+                    result_collector_factory,
+                    ResultCollectorMultiple.default_layer_factory)
 
             if self.module_csv_import is None:
                 result_collector_factory = lambda parent, target_layer: ResultCollectorMultiple(self, target_layer)
