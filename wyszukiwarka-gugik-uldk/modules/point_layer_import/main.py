@@ -5,11 +5,11 @@ from PyQt5 import QtGui, QtWidgets, uic
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QKeySequence, QPixmap
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsCoordinateTransformContext, QgsMapLayerProxyModel,
-                       QgsNetworkAccessManager, QgsSettings)
+                       QgsCoordinateTransformContext, QgsMapLayerProxyModel, QgsProject)
 from qgis.gui import QgsMessageBarItem
 
 from .res import resources
+from .worker import PointLayerImportWorker
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -18,6 +18,21 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 CRS_2180 = QgsCoordinateReferenceSystem()
 CRS_2180.createFromSrid(2180)
+
+def get_obiekty_form(count):
+    form = "obiekt"
+    count = count
+    if count == 1:
+        pass
+    elif 2 <= count <= 4:
+        form = "obiekty"
+    elif 5 <= count <= 20:
+        form = "obiektów"
+    else:
+        units = count % 10
+        if units in (2,3,4):
+            form = "obiekty"
+    return form
 
 class UI(QtWidgets.QFrame, FORM_CLASS):
 
@@ -39,9 +54,10 @@ class UI(QtWidgets.QFrame, FORM_CLASS):
             "ale mogą one działać wolniej. Wyszukiwanie obiektów działa również\n"
             "po zamknięciu wtyczki."))
     
+
 class PointLayerImport:
 
-    def __init__(self, parent, target_layout, uldk_api, result_collector_factory, layer_factory):
+    def __init__(self, parent, target_layout, uldk_api):
         self.parent = parent
         self.iface = parent.iface
         self.canvas = self.iface.mapCanvas()
@@ -49,48 +65,22 @@ class PointLayerImport:
         self.__init_ui()
 
         self.uldk_api = uldk_api
-        self.result_collector_factory = result_collector_factory
-        self.layer_factory = layer_factory
         
     def search(self):
         layer = self.ui.layer_select.currentLayer()
-        layer_crs = layer.sourceCrs()
-        if layer_crs != CRS_2180:
-            transformation = (QgsCoordinateTransform(layer_crs, CRS_2180, QgsCoordinateTransformContext()))
-        else: transformation = None
+        self.source_features_count = layer.dataProvider().featureCount()
+        target_layer_name = self.ui.text_edit_target_layer_name.text()
 
-        ULDKPoint = self.uldk_api.ULDKPoint
+        selected_field_names = self.ui.combobox_fields_select.checkedItems()
+        fields_to_copy = [ field for field in layer.dataProvider().fields()
+                            if field.name() in selected_field_names ]
 
-        uldk_points = []
-        self.source_features_count = 0
-        for feature in layer.getFeatures():
-            point = feature.geometry().asPoint()
-            if transformation:
-                point = transformation.transform(point)
-            uldk_point = ULDKPoint(point.x(), point.y(), 2180)
-            uldk_points.append(uldk_point)
-            self.source_features_count += 1
-        
-        uldk_search = self.uldk_api.ULDKSearchPoint(
-            "dzialka",
-            ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt")
-        )
-
-        layer_name = self.ui.text_edit_target_layer_name.text()
-        layer = self.layer_factory(
-            name = layer_name, custom_properties = {"ULDK": layer_name})
-
-        self.result_collector = self.result_collector_factory(self.parent, layer)
-        
         self.__cleanup_before_search()
-        self.worker = self.uldk_api.ULDKSearchPointWorker(uldk_search, uldk_points)
+
+        self.worker = PointLayerImportWorker(self.uldk_api, layer, target_layer_name, fields_to_copy)
         self.thread = QThread()
         self.worker.moveToThread(self.thread) 
-        self.worker.found.connect(self.__handle_found)
-        self.worker.found.connect(self.__progressed)
-        self.worker.not_found.connect(self.__handle_not_found)
-        self.worker.not_found.connect(self.__progressed)
-        self.worker.found.connect(self.__progressed)
+        self.worker.progressed.connect(self.__progressed)
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.__handle_finished)
         self.worker.interrupted.connect(self.__handle_interrupted)
@@ -99,7 +89,8 @@ class PointLayerImport:
 
         self.thread.start()
 
-        self.ui.label_status.setText(f"Trwa wyszukiwanie {self.source_features_count} obiektów...")
+        count = self.source_features_count
+        self.ui.label_status.setText(f"Trwa wyszukiwanie {count} {get_obiekty_form(count)}...")
     
     def __init_ui(self):
         self.ui.button_start.clicked.connect(self.search)
@@ -111,55 +102,54 @@ class PointLayerImport:
         self.ui.label_not_found_count.setText("")
 
     def __on_layer_changed(self, layer):
+        self.ui.combobox_fields_select.clear()
+        self.ui.button_start.setEnabled(False)
         if layer:
+            if layer.dataProvider().featureCount() == 0:
+                self.parent.iface.messageBar().pushCritical(
+                    "Wtyczka ULDK",f"Warstwa <b>{layer.sourceName()} nie zawiera żadnych obiektów.</b>")
+                return
             self.ui.button_start.setEnabled(True)
             current_layer_name = layer.sourceName()
             suggested_target_layer_name = f"{current_layer_name} - Działki ULDK"
             self.ui.text_edit_target_layer_name.setText(suggested_target_layer_name)
-
-    def __handle_found(self, uldk_response_row):
-        self.uldk_received_rows.append(uldk_response_row)
-        self.found_count += 1
-
-    def __handle_not_found(self, uldk_point, exception):
-        self.not_found_count += 1
-
-    def __progressed(self):
-        found_count = self.found_count
-        not_found_count = self.not_found_count
-        progressed_count = found_count + not_found_count
+            fields = layer.dataProvider().fields()
+            self.ui.combobox_fields_select.addItems(map(lambda x: x.name(), fields))
+            self.ui.button_start.setEnabled(True)
+        else:
+            self.ui.text_edit_target_layer_name.setText("")
+            
+    def __progressed(self, found, featues_omitted_count):
+        if found:
+            self.found_count += 1
+        else:
+            self.not_found_count += 1
+        self.omitted_count += featues_omitted_count
+        progressed_count = self.found_count + self.not_found_count + self.omitted_count
         self.ui.progress_bar.setValue(progressed_count/self.source_features_count*100)
         self.ui.label_status.setText("Przetworzono {} z {} obiektów".format(progressed_count, self.source_features_count))
-        self.ui.label_found_count.setText("Znaleziono: {}".format(found_count))
-        self.ui.label_not_found_count.setText("Nie znaleziono: {}".format(not_found_count))
+        self.ui.label_found_count.setText("Znaleziono: {}".format(self.found_count))
+        self.ui.label_not_found_count.setText("Nie znaleziono: {}".format(self.not_found_count))
 
-    def __handle_finished(self):
-        self.__collect_received_rows()
-        form = "obiekt"
-        found_count = self.found_count
-        if found_count == 1:
-            pass
-        elif 2 <= found_count <= 4:
-            form = "obiekty"
-        elif 5 <= found_count <= 15:
-            form = "obiektów"
-        else:
-            units = found_count % 10
-            if units in (2,3,4):
-                form = "obiekty"
+    def __handle_finished(self, layer_found, layer_not_found):
+        self.__cleanup_after_search()
+
+        if layer_found.dataProvider().featureCount():
+            QgsProject.instance().addMapLayer(layer_found)
+        if layer_not_found.dataProvider().featureCount():
+            QgsProject.instance().addMapLayer(layer_not_found)
 
         self.iface.messageBar().pushWidget(QgsMessageBarItem("Wtyczka ULDK",
-            f"Import warstwy: zakończono wyszukiwanie. Zapisano {found_count} {form} do warstwy <b>{self.ui.text_edit_target_layer_name.text()}</b>"))
+            f"Import CSV: zakończono wyszukiwanie. Zapisano {self.found_count} {get_obiekty_form(self.found_count)} do warstwy <b>{self.ui.text_edit_target_layer_name.text()}</b>"))
+        
+    def __handle_interrupted(self, layer_found, layer_not_found):
         self.__cleanup_after_search()
 
-    def __handle_interrupted(self):
-        self.__collect_received_rows()
-        self.__cleanup_after_search()
-
-    def __collect_received_rows(self):
-        if self.uldk_received_rows:
-            self.result_collector.update(self.uldk_received_rows)
-
+        if layer_found.dataProvider().featureCount():
+            QgsProject.instance().addMapLayer(layer_found)
+        if layer_not_found.dataProvider().featureCount():
+            QgsProject.instance().addMapLayer(layer_not_found)
+        
     def __cleanup_after_search(self):
         self.__set_controls_enabled(True)
         self.ui.button_cancel.setText("Anuluj")
@@ -175,7 +165,7 @@ class PointLayerImport:
 
         self.found_count = 0
         self.not_found_count = 0
-        self.uldk_received_rows = []
+        self.omitted_count = 0
 
     def __set_controls_enabled(self, enabled):
         self.ui.text_edit_target_layer_name.setEnabled(enabled)

@@ -176,13 +176,10 @@ class Plugin:
                     ResultCollectorMultiple.default_layer_factory)
 
             if self.module_point_layer_import is None:
-                result_collector_factory = lambda parent, target_layer: ResultCollectorMultiple(self, target_layer)
                 self.module_point_layer_import = PointLayerImport(
                     self,
                     self.dockwidget.tab_import_layer_point_layout,
-                    uldk_api,
-                    result_collector_factory,
-                    ResultCollectorMultiple.default_layer_factory)
+                    uldk_api,)
 
             if not self.module_wms_kieg_initialized:
                 self.dockwidget.button_wms_kieg.clicked.connect(self.add_wms_kieg)
