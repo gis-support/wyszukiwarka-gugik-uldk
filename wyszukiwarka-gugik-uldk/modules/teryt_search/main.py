@@ -101,7 +101,7 @@ class TerytSearch:
             plot_teryt = f"{municipality_teryt}.{plot_id}"
             plots_teryts.append(plot_teryt)
 
-        layer_name = f"{municipality_name} - Działki '{plot_id}''"
+        layer_name = f"{municipality_name} - Działki '{plot_id}'"
         layer = self.layer_factory(
             name = layer_name, custom_properties = {"ULDK": layer_name})
         self.result_collector_precinct_unknown = self.result_collector_precinct_unknown_factory(self.parent, layer)
