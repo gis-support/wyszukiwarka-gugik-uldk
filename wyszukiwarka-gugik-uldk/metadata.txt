@@ -10,7 +10,7 @@
 name=Wyszukiwarka działek ewidencyjnych (GUGiK ULDK)
 qgisMinimumVersion=3.0
 description=Wtyczka służąca do pobierania granic działek ewidencyjnych.
-version=1.9.1
+version=1.9.2
 author=Studenci UMCS uczestniczący w programie: Geo4Work2018
 email=kamil.kozik@gis-support.pl 
 
@@ -23,12 +23,7 @@ repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog=- Dodano zakładkę 'Z warstwy punktowej', służącej do wyszukiwania działek znajdujących się na punktach ze wskazanej warstwy;
-    - Dodano możliwośc wyszukiwania działek bez znajomości obrębu;
-    - Wyszukiwanie przez TERYT i kliknięcie odbywa się w tle;
-    - Dodano ramkę 'Przydatne adresy WMS';
-    - Zmieniono nazwę przycisku z 'Szukaj' na 'Szukaj w ULDK' w zakładce 'Wyszukiwanie';
-    - Drobne zmiany w wyskakujących komunikatach;
+changelog=- Dodano opcję pomijania duplikatów działek przy wyszukiwaniu z warstwy punktowej;
     - Inne usprawnienia i poprawki błędów.
     
 
