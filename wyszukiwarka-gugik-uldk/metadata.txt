@@ -24,6 +24,7 @@ repository=https://github.com/gis-support/wyszukiwarka-gugik-uldk
 
 # Uncomment the following line and add your changelog:
 changelog=- Dodano opcję pomijania duplikatów działek przy wyszukiwaniu z warstwy punktowej;
+    - Dodano opcję wyszukiwania tylko z zaznaczonych punktów;
     - Inne usprawnienia i poprawki błędów.
     
 
