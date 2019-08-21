@@ -53,7 +53,10 @@ class UI(QtWidgets.QFrame, FORM_CLASS):
             "będziesz mógł korzystać z pozostałych funkcjonalności wtyczki,\n"
             "ale mogą one działać wolniej. Wyszukiwanie obiektów działa również\n"
             "po zamknięciu wtyczki."))
-    
+        self.label_info_skip_duplicates.setPixmap(QPixmap(self.icon_info_path))
+        self.label_info_skip_duplicates.setToolTip((
+            "Gdy zaznaczone, warstwa wynikowa nie będzie zawierać duplikatów\n"
+            "działek, na których znalazło się wiele punktów z warstwy wejściowej."))      
 
 class PointLayerImport:
 
@@ -67,17 +70,23 @@ class PointLayerImport:
         self.uldk_api = uldk_api
         
     def search(self):
-        layer = self.ui.layer_select.currentLayer()
-        self.source_features_count = layer.dataProvider().featureCount()
+        layer = self.source_layer
+        
         target_layer_name = self.ui.text_edit_target_layer_name.text()
 
+        selected_only = bool(self.ui.checkbox_selected_only.checkState())
         selected_field_names = self.ui.combobox_fields_select.checkedItems()
         fields_to_copy = [ field for field in layer.dataProvider().fields()
                             if field.name() in selected_field_names ]
+        skip_duplicates = bool(self.ui.checkbox_skip_duplicates.checkState())
+
+        features_iterator = layer.getSelectedFeatures() if selected_only else layer.getFeatures()
+        count = sum(1 for i in features_iterator)
+        self.source_features_count = count
 
         self.__cleanup_before_search()
 
-        self.worker = PointLayerImportWorker(self.uldk_api, layer, target_layer_name, fields_to_copy)
+        self.worker = PointLayerImportWorker(self.uldk_api, layer, selected_only, target_layer_name, skip_duplicates, fields_to_copy)
         self.thread = QThread()
         self.worker.moveToThread(self.thread) 
         self.worker.progressed.connect(self.__progressed)
@@ -89,8 +98,8 @@ class PointLayerImport:
 
         self.thread.start()
 
-        count = self.source_features_count
-        self.ui.label_status.setText(f"Trwa wyszukiwanie {count} {get_obiekty_form(count)}...")
+
+        self.ui.label_status.setText(f"Trwa wyszukiwanie {count} obiektów...")
     
     def __init_ui(self):
         self.ui.button_start.clicked.connect(self.search)
@@ -109,27 +118,45 @@ class PointLayerImport:
                 self.parent.iface.messageBar().pushCritical(
                     "Wtyczka ULDK",f"Warstwa <b>{layer.sourceName()} nie zawiera żadnych obiektów.</b>")
                 return
+            self.source_layer = layer
+            layer.selectionChanged.connect(self.__on_layer_features_selection_changed)
+            layer.updatedFields.connect(self.__fill_combobox_fields_select)
             self.ui.button_start.setEnabled(True)
             current_layer_name = layer.sourceName()
             suggested_target_layer_name = f"{current_layer_name} - Działki ULDK"
-            self.ui.text_edit_target_layer_name.setText(suggested_target_layer_name)
             fields = layer.dataProvider().fields()
+            self.ui.text_edit_target_layer_name.setText(suggested_target_layer_name)
             self.ui.combobox_fields_select.addItems(map(lambda x: x.name(), fields))
             self.ui.button_start.setEnabled(True)
         else:
+            self.source_layer = None
             self.ui.text_edit_target_layer_name.setText("")
-            
-    def __progressed(self, found, featues_omitted_count):
+            self.ui.checkbox_selected_only.setText("Tylko zaznaczone obiekty [0]")
+    
+    def __on_layer_features_selection_changed(self, selected_features):
+        if not self.source_layer:
+            selected_features = []
+        self.ui.checkbox_selected_only.setText(f"Tylko zaznaczone obiekty [{len(selected_features)}]")
+
+    def __fill_combobox_fields_select(self):
+        self.ui.combobox_fields_select.clear()
+        fields = self.source_layer.dataProvider().fields()
+        self.ui.combobox_fields_select.addItems(map(lambda x: x.name(), fields))
+
+    def __progressed(self, found, omitted_count):
         if found:
             self.found_count += 1
         else:
             self.not_found_count += 1
-        self.omitted_count += featues_omitted_count
-        progressed_count = self.found_count + self.not_found_count + self.omitted_count
+        self.omitted_count += omitted_count
+        progressed_count = self.found_count + self.not_found_count
         self.ui.progress_bar.setValue(progressed_count/self.source_features_count*100)
-        self.ui.label_status.setText("Przetworzono {} z {} obiektów".format(progressed_count, self.source_features_count))
-        self.ui.label_found_count.setText("Znaleziono: {}".format(self.found_count))
-        self.ui.label_not_found_count.setText("Nie znaleziono: {}".format(self.not_found_count))
+        self.ui.label_status.setText(f"Przetworzono {progressed_count} z {self.source_features_count} obiektów")
+        found_message = f"Znaleziono: {self.found_count - self.omitted_count}"
+        if self.omitted_count:
+            found_message += f" (pominięto: {self.omitted_count})"
+        self.ui.label_found_count.setText(found_message)
+        self.ui.label_not_found_count.setText(f"Nie znaleziono: {self.not_found_count}")
 
     def __handle_finished(self, layer_found, layer_not_found):
         self.__cleanup_after_search()

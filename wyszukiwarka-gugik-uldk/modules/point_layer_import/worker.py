@@ -54,10 +54,12 @@ class PointLayerImportWorker(QObject):
     interrupted = pyqtSignal(QgsVectorLayer, QgsVectorLayer)
     progressed = pyqtSignal(bool, int)
     
-    def __init__(self, uldk_api, source_layer, layer_name, additional_output_fields = []):
+    def __init__(self, uldk_api, source_layer, selected_only, layer_name, skip_duplicates, additional_output_fields = []):
         super().__init__()
         self.source_layer = source_layer
         self.uldk_api = uldk_api
+        self.selected_only = selected_only
+        self.skip_duplicates = skip_duplicates
         self.additional_output_fields = additional_output_fields
 
         self.layer_found = QgsVectorLayer(f"Polygon?crs=EPSG:{2180}", layer_name, "memory")
@@ -82,49 +84,56 @@ class PointLayerImportWorker(QObject):
         ])
 
         features = []
-
+        features_iterator = self.source_layer.getSelectedFeatures() if self.selected_only else self.source_layer.getFeatures()
         source_crs = self.source_layer.sourceCrs()
         if source_crs != CRS_2180:
             transformation = (QgsCoordinateTransform(source_crs, CRS_2180, QgsCoordinateTransformContext()))
-            for f in self.source_layer.getFeatures():
+            for f in features_iterator:
                 point = f.geometry().asPoint()
                 point = transformation.transform(point)
                 f.setGeometry(QgsGeometry.fromPointXY(point))
                 features.append(f)
         else:
             transformation = None
-            features = self.source_layer.getFeatures()
+            features = features_iterator
+
+        uldk_search = self.uldk_api.ULDKSearchPoint(
+            "dzialka",
+            ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"))
 
 
-        while features:
-            
+        found_features = []
+
+        for source_feature in features:
             if QThread.currentThread().isInterruptionRequested():
                 self.__commit()
                 self.interrupted.emit(self.layer_found, self.layer_not_found)
                 return
 
-            current_feature, *features = features
-            point = current_feature.geometry().asPoint()
+            skip = False
+            for found_feature in found_features:
+                if found_feature.geometry().intersects(source_feature.geometry()):
+                    if not self.skip_duplicates:
+                        self.layer_found.dataProvider().addFeature(found_feature)
+                    skip = True
+            if skip:
+                self.progressed.emit(True,  1 if self.skip_duplicates else 0)
+                continue
 
+            point = source_feature.geometry().asPoint()
             uldk_point = self.uldk_api.ULDKPoint(point.x(), point.y(), 2180)
-            uldk_search = self.uldk_api.ULDKSearchPoint(
-                "dzialka",
-                ("geom_wkt", "wojewodztwo", "powiat", "gmina", "obreb","numer","teryt"))
-
+        
             try:
                 uldk_response_row = uldk_search.search(uldk_point)
                 additional_attributes = []
                 for field in self.additional_output_fields:
-                    additional_attributes.append(current_feature[field.name()])
+                    additional_attributes.append(source_feature[field.name()])
                 found_feature = uldk_response_to_qgs_feature(uldk_response_row, additional_attributes)
+                found_features.append(found_feature)
                 self.layer_found.dataProvider().addFeature(found_feature)
-                found_geometry = found_feature.geometry()
-                features_left_count = len(features)
-                features = list(filter(lambda f: not f.geometry().intersects(found_geometry), features ))
-                features_omitted_count = features_left_count - len(features)
-                self.progressed.emit(True, features_omitted_count)
+                self.progressed.emit(True, 0)
             except Exception as e:
-                not_found_feature = self.__make_not_found_feature(current_feature.geometry(), e)
+                not_found_feature = self.__make_not_found_feature(source_feature.geometry(), e)
                 self.layer_not_found.dataProvider().addFeature(not_found_feature)
                 self.progressed.emit(False, 0)
             

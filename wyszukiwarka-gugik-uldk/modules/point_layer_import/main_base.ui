@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>368</width>
-    <height>376</height>
+    <height>402</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -52,7 +52,7 @@
      <property name="frameShadow">
       <enum>QFrame::Raised</enum>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
+     <layout class="QVBoxLayout" name="verticalLayout_8">
       <item>
        <widget class="QFrame" name="frame_4">
         <property name="frameShape">
@@ -95,6 +95,13 @@
          </item>
          <item>
           <widget class="QgsMapLayerComboBox" name="layer_select"/>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkbox_selected_only">
+           <property name="text">
+            <string>Tylko zaznaczone obiekty [0]</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -219,6 +226,66 @@
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line_3">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="frame_6">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QFormLayout" name="formLayout">
+         <property name="horizontalSpacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="checkbox_skip_duplicates">
+           <property name="text">
+            <string>Pomijaj duplikaty</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_info_skip_duplicates">
+           <property name="maximumSize">
+            <size>
+             <width>15</width>
+             <height>15</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Możesz ręcznie wpisać kod TERYT działki</string>
+           </property>
+           <property name="text">
+            <string>i</string>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
