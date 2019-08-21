@@ -71,6 +71,7 @@ class TerytSearch:
         
         
         if self.ui.checkbox_precinct_unknown.checkState():
+            self.ui.progress_bar_precinct_unknown.setValue(0)
             self.uldk_search_worker.finished.connect(self.__handle_finished_precinct_unknown)
             self.uldk_search_worker.found.connect(self.__handle_found_precinct_unknown)
             self.uldk_search_worker.found.connect(self.__handle_progress_precinct_unknown)
